@@ -9,6 +9,8 @@
     #include <netinet/in.h>
 #endif
 
+#include "Globals.hpp"
+
 #include <string>
 #include <optional>
 #include <utility>

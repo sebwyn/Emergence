@@ -3,6 +3,7 @@
 #include "Socket.hpp"
 
 #include <chrono>
+#include <vector>
 
 class Client {
 public:
@@ -17,4 +18,8 @@ private:
 
     std::chrono::time_point<std::chrono::high_resolution_clock> lastPacketTime;
     bool connectionEstablished = false;
+    uint remoteSeqNum = 0;
+    uint localSeqNum = 0;
+
+    std::bitset<32> receivedPackets;
 };

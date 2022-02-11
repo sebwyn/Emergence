@@ -164,19 +164,16 @@ std::string Socket::receive(){
     return std::string(buffer);
 }
 
-std::optional<std::pair<std::string, unsigned int>> Socket::receiveFrom(std::string* data){
+std::optional<std::pair<std::string, unsigned int>> Socket::receiveFrom(char** data){
 
     sockaddr_in from;
     socklen_t fromLen = sizeof(from);
 
-    char buffer[MAX_MESG_LENGTH] = {0};
-    int bytes = recvfrom(sockfd, buffer, MAX_MESG_LENGTH, 0, (sockaddr*)&from, &fromLen);
+    int bytes = recvfrom(sockfd, data, MAX_MESG_LENGTH, 0, (sockaddr*)&from, &fromLen);
 
     if(bytes <= 0){
         return {};
     }
-
-    *data = std::string(buffer);
 
     unsigned int from_address = ntohl(from.sin_addr.s_addr);
     unsigned int from_port = ntohs(from.sin_port);

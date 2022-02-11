@@ -10,6 +10,9 @@ Client::Client() : socket(AF_INET, SOCK_DGRAM) {
     std::cout << "What ip would you like to connect to: ";
     std::cin >> ip;
 
+    //set receivedPackets to high
+    receivedPackets.set();
+
     //socket.connect(ip, Globals::port);
     //std::cout << "Connected" << std::endl;
 }
@@ -32,8 +35,21 @@ void Client::update(){
         if(received.has_value()){
             if(!connectionEstablished) connectionEstablished = true;
             lastPacketTime = std::chrono::high_resolution_clock::now();
-            //set messages that have been acknowledged
 
+            if(received->length() < sizeof(Globals::Header)){
+                //drop the packet
+                continue;
+            }
+            Globals::Header header;
+            memcpy(&header, received->c_str(), sizeof(header));
+            
+            //rotate our received bitset by the difference between remoteSeqNum and receivedSeqNum
+            //then set the bitset so the previous remoteSeqNum is acked
+            receivedPackets << header.seq - remoteSeqNum;
+            receivedPackets.set(header.seq - remoteSeqNum);
+            remoteSeqNum = header.seq;
+
+            std::cout << "Received ack: " << header.ack << " " << header.acks.to_string() << std::endl;
         }
 
         //then send messages from queue
@@ -43,8 +59,16 @@ void Client::update(){
 }
 
 void Client::send(std::string message){
-    std::string packet = std::string(Globals::protocol()) + message;
-    socket.sendTo(ip, Globals::port, packet);
+    Globals::Header header;
+    header.seq = localSeqNum++;
+    header.ack = remoteSeqNum;
+    header.acks = receivedPackets;
+
+    std::string toSend = std::string(sizeof(header), ' ');
+    memcpy(toSend.data(), &header, sizeof(header));
+    toSend += message;
+    std::cout << "sending: " << toSend << std::endl;
+    socket.sendTo(ip, Globals::port, toSend);
 }
 
 std::optional<std::string> Client::receive(){
