@@ -135,6 +135,8 @@ public:
         std::chrono::high_resolution_clock::time_point sent;
         std::function<void(AppData)> onResend;
 
+        bool resent = false;
+
         AppDataHandled(int seq, AppData data, std::function<void(AppData)> onResend) : seq(seq), data(data), onResend(onResend) {
             sent = std::chrono::high_resolution_clock::now();
         }

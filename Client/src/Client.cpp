@@ -35,6 +35,25 @@ void Client::update(){
                 sendKeepAlive();
                 lastSentTime = std::chrono::high_resolution_clock::now();
             }
+
+            //iterate over all the sent packets, checking if any have been lost and resending
+            auto i = sentAppData.begin();
+            for(Globals::AppDataHandled packet : sentAppData){
+                //if the packet is still in this list after a second, resend it  
+                auto now = std::chrono::high_resolution_clock::now();
+                if(std::chrono::duration_cast<std::chrono::milliseconds>(now - packet.sent).count() > Globals::packetLostTime){
+                    std::cout << "Resending packet: " << packet.data.toString() << " after: " << std::chrono::duration_cast<std::chrono::milliseconds>(now - packet.sent).count() << std::endl;
+                    packet.onResend(packet.data);
+                    packet.resent = true;
+                    //remove from the list
+                    if(std::next(i) == sentAppData.cend()){
+                        sentAppData.erase(i);
+                        break;
+                    }
+                    sentAppData.erase(i);
+                }  
+                ++i; 
+            }
         }
 
         //receive messages first (so we know what has been acknowledged)
@@ -73,13 +92,27 @@ void Client::update(){
 
                 if(i->seq < remoteSeqNum){
                     if(i->seq - remoteSeqNum <= 32){
-                        if(std::next(i) == sentAppData.cend()){
-                        sentAppData.erase(i);
-                        break;
-                    }
-                    sentAppData.erase(i);
+                        if(received->header.acks.test(i->seq - remoteSeqNum - 1)){
+                            if(std::next(i) == sentAppData.cend()){
+                                sentAppData.erase(i);
+                                break;
+                            }
+                            sentAppData.erase(i);
+                        } else {
+                            std::cout << "Damn that wasn't received!" << std::endl;
+                        }
                     } else {
-                        std::cout << "Seriously not acked after 32 packets?" << std::endl;
+                        if(!i->resent){
+                            auto now = std::chrono::high_resolution_clock::now();
+                            std::cout << "Seriously not acked after 32 packets? and " << std::chrono::duration_cast<std::chrono::milliseconds>(now - i->sent).count() << " ms" << std::endl;
+                        }
+                        //drop the packet out of the queue
+                        /*if(std::next(i) == sentAppData.cend()){
+                            sentAppData.erase(i);
+                            break;
+                        }
+                        sentAppData.erase(i);
+                        */
                     }
                 }
                 ++i;
@@ -91,24 +124,6 @@ void Client::update(){
                     std::cout << "H:" << message.toString() << std::endl;
                 }
             }
-        }
-
-        //iterate over all the sent packets, checking if any have been lost and resending
-        auto i = sentAppData.begin();
-        for(Globals::AppDataHandled packet : sentAppData){
-            //if the packet is still in this list after a second, resend it  
-            auto now = std::chrono::high_resolution_clock::now();
-            if(std::chrono::duration_cast<std::chrono::milliseconds>(now - packet.sent).count() > Globals::packetLostTime){
-                std::cout << "Resending packet: " << packet.data.toString() << std::endl;
-                packet.onResend(packet.data);
-                //remove from the list
-                if(std::next(i) == sentAppData.cend()){
-                    sentAppData.erase(i);
-                    break;
-                }
-                sentAppData.erase(i);
-            }  
-            ++i; 
         }
 
         //then send messages from queue
@@ -125,7 +140,17 @@ void Client::update(){
             std::cin.clear();
             if(message.length()){
                 std::vector<Globals::AppData> data;
-                data.push_back(Globals::AppData(currentMessage++, message));
+                Globals::AppData m = Globals::AppData(currentMessage++, message);
+                data.push_back(m);
+
+                if(connectionEstablished){
+                    sentAppData.push_back(Globals::AppDataHandled(localSeqNum, m, 
+                        [](Globals::AppData data){ 
+                            std::cout << "dropped message" << std::endl;
+                        }
+                    ));
+                }
+
                 send(data);
                 lastSentTime = std::chrono::high_resolution_clock::now();
             }

@@ -30,7 +30,7 @@ void Server::update(){
             }
 
             //send a message to the client every second that keeps the connection alive, and acks
-            if(std::chrono::duration_cast<std::chrono::seconds>(now - lastSentTime).count() > 1){
+            if(std::chrono::duration_cast<std::chrono::milliseconds>(now - lastSentTime).count() > 500){
                 sendKeepAlive(ip, clientPort);
                 lastSentTime = now;
             }
@@ -44,9 +44,14 @@ void Server::update(){
 
             //set messages that have been acknowledged
             //update the bitset of requests
-            receivedPackets << received->header.seq - remoteSeqNum;
-            receivedPackets.set(received->header.seq - remoteSeqNum);
-            remoteSeqNum = received->header.seq;
+            if(received->header.seq > remoteSeqNum){
+                receivedPackets = receivedPackets << received->header.seq - remoteSeqNum;
+                //ack the previous remote seq num
+                receivedPackets.set(received->header.seq - remoteSeqNum - 1);
+                remoteSeqNum = received->header.seq;
+            } else if(received->header.seq < remoteSeqNum && (remoteSeqNum - received->header.seq) < 32) {
+                receivedPackets.set(remoteSeqNum - received->header.seq - 1);
+            }
 
             //not a keep alive
             if(received->messages.size()){
@@ -118,7 +123,7 @@ void Server::sendKeepAlive(std::string ip, ushort port){
     Globals::Packet packet(header);
 
     //dont have to append keep alives to sent messages
-    std::cout << "packet bitset: " << receivedPackets.to_string() << std::endl;
+    std::cout << "packet bitset: " << header.toString() << std::endl;
 
     socket.sendTo(ip, port, packet.toBuffer());
 }
