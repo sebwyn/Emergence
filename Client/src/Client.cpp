@@ -90,9 +90,9 @@ void Client::update(){
                     sentAppData.erase(i);
                 }
 
-                if(i->seq < remoteSeqNum){
-                    if(i->seq - remoteSeqNum <= 32){
-                        if(received->header.acks.test(i->seq - remoteSeqNum - 1)){
+                if(i->seq < received->header.ack){
+                    if(i->seq - received->header.ack <= 32){
+                        if(received->header.acks.test(i->seq - received->header.ack - 1)){
                             if(std::next(i) == sentAppData.cend()){
                                 sentAppData.erase(i);
                                 break;
@@ -104,10 +104,11 @@ void Client::update(){
                     } else {
                         if(!i->resent){
                             auto now = std::chrono::high_resolution_clock::now();
-                            std::cout << "Seriously not acked after 32 packets? and " << std::chrono::duration_cast<std::chrono::milliseconds>(now - i->sent).count() << " ms" << std::endl;
+                            std::cout << "Seriously not acked after 32 packets? and " << std::chrono::duration_cast<std::chrono::milliseconds>(now - i->sent).count() << " ms and " << i->seq << " " << remoteSeqNum << std::endl;
                         }
                         //drop the packet out of the queue
-                        /*if(std::next(i) == sentAppData.cend()){
+                        /*
+                        if(std::next(i) == sentAppData.cend()){
                             sentAppData.erase(i);
                             break;
                         }
@@ -146,7 +147,7 @@ void Client::update(){
                 if(connectionEstablished){
                     sentAppData.push_back(Globals::AppDataHandled(localSeqNum, m, 
                         [](Globals::AppData data){ 
-                            std::cout << "dropped message" << std::endl;
+                            //std::cout << "dropped message" << std::endl;
                         }
                     ));
                 }

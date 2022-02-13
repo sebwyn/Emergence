@@ -109,7 +109,7 @@ std::optional<Globals::Packet> Server::receive(){
         std::default_random_engine e1(r());
         std::uniform_real_distribution<double> distribution(0.);
         if(distribution(e1) < Globals::packetLoss){
-            std::cout << "Dropping packet" << std::endl;
+            //std::cout << "Dropping packet" << std::endl;
             return {};
         }
 
@@ -123,7 +123,7 @@ void Server::sendKeepAlive(std::string ip, ushort port){
     Globals::Packet packet(header);
 
     //dont have to append keep alives to sent messages
-    std::cout << "packet bitset: " << header.toString() << std::endl;
+    //std::cout << "packet bitset: " << header.toString() << std::endl;
 
     socket.sendTo(ip, port, packet.toBuffer());
 }
