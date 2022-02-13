@@ -105,12 +105,8 @@ bool Socket::setNonBlocking(){
     return true;
 }
 
-void Socket::bind(int port){
+void Socket::bind(unsigned short port){
     int opt = 1;
-
-    if(setsockopt(sockfd, SOL_SOCKET, SO_REUSEADDR, &opt, sizeof(opt))){
-        std::cout << "Failed to set socket options!" << std::endl;
-    }
 
     addr.sin_family = domain;
     addr.sin_addr.s_addr = INADDR_ANY;
@@ -164,18 +160,20 @@ std::string Socket::receive(){
     return std::string(buffer);
 }
 
-std::optional<std::pair<std::string, unsigned int>> Socket::receiveFrom(char** data){
+std::optional<std::pair<std::string, unsigned int>> Socket::receiveFrom(std::unique_ptr<char>* data){
 
     sockaddr_in from;
     socklen_t fromLen = sizeof(from);
 
-    int bytes = recvfrom(sockfd, data, MAX_MESG_LENGTH, 0, (sockaddr*)&from, &fromLen);
+    *data = std::unique_ptr<char>(new char[MAX_MESG_LENGTH]);
+    memset(data->get(), 0, MAX_MESG_LENGTH);
+    int bytes = recvfrom(sockfd, data->get(), MAX_MESG_LENGTH, 0, (sockaddr*)&from, &fromLen);
 
     if(bytes <= 0){
         return {};
     }
 
-    unsigned int from_address = ntohl(from.sin_addr.s_addr);
+    unsigned int from_address = from.sin_addr.s_addr;
     unsigned int from_port = ntohs(from.sin_port);
 
     char ipBuffer[INET_ADDRSTRLEN] = {0};

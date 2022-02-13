@@ -31,7 +31,7 @@ public:
 
     bool setNonBlocking();
 
-    void bind(int port);
+    void bind(unsigned short port);
     bool listen();
     std::optional<Socket> accept();
 
@@ -42,7 +42,7 @@ public:
     void receive(void* data, int length);
 
     bool sendTo(std::string ip, int port, std::string message);
-    std::optional<std::pair<std::string, unsigned int>> receiveFrom(std::string* data);
+    std::optional<std::pair<std::string, unsigned int>> receiveFrom(std::unique_ptr<char>* data);
 
     inline int getSocket(){
         return sockfd;
