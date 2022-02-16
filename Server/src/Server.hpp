@@ -26,6 +26,7 @@ private:
     //functions called once; defined to cleanup update loop
     void handlePacket(Globals::Packet received);
     void sendInput();
+    void manageMode();
 
     //receive a message filtering with our protocol
     std::optional<Globals::Packet> receive();
@@ -52,4 +53,9 @@ private:
 
     bool rttDefined;
     double rtt = 0.0;
+
+    uint returnToGood = 15000;
+    int trustedLevel = 0;
+    Globals::ConnectionState mode = Globals::ConnectionState::GOOD;
+    std::chrono::high_resolution_clock::time_point modeStart, lastTrustTime;
 };

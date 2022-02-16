@@ -35,6 +35,8 @@ void Server::update(){
                 sendKeepAlive(ip, clientPort);
                 lastSentTime = updateStart;
             }
+
+            manageMode();
         }
 
         //receive a valid packet per our protocol, and establish a connection if 
@@ -197,5 +199,42 @@ void Server::sendInput(){
             send(ip, clientPort, data);
             lastSentTime = std::chrono::high_resolution_clock::now();
         }
+    }
+}
+
+void Server::manageMode(){
+    auto now = std::chrono::high_resolution_clock::now();
+    //time elapsed in mode
+    auto elapsed = std::chrono::duration_cast<std::chrono::milliseconds>(now - modeStart).count();
+
+    //check rtt, and if it is bad, switch to a bad sendrate
+    if(mode == Globals::ConnectionState::GOOD && rtt > Globals::badRtt){
+        //immediately drop to bad mode
+        mode = Globals::ConnectionState::BAD;
+        modeStart = std::chrono::high_resolution_clock::now();
+
+        std::cout << "Entering bad mode!" << std::endl;
+
+        if(elapsed < 10000){
+            returnToGood *= 2;
+            if(returnToGood > 60000) returnToGood = 60000;
+        }
+    }
+
+    if(mode == Globals::ConnectionState::BAD && elapsed > returnToGood){
+
+        std::cout << "Entering good mode!" << std::endl;
+
+        //return to good after returnToGood time has passed
+        mode = Globals::ConnectionState::GOOD;
+        lastTrustTime = modeStart = std::chrono::high_resolution_clock::now();
+    }
+
+    auto timeSinceTrust = std::chrono::duration_cast<std::chrono::milliseconds>(now - lastTrustTime).count();
+    if(mode == Globals::ConnectionState::GOOD && timeSinceTrust > 10000){
+        //trust the connection
+        returnToGood /= 2;
+        lastTrustTime = std::chrono::high_resolution_clock::now();
+        if(returnToGood < 1000) returnToGood = 1000;
     }
 }

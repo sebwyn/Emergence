@@ -13,7 +13,7 @@ public:
     //time before packet resend is called when packet hasn't been acked in ms
     static const int packetLostTime = 1000;
     //float percentage of packet being lost
-    static constexpr double packetLoss = .2;
+    static constexpr double packetLoss = .02;
     static std::string protocol(){
         return std::string("MERG");
     }
