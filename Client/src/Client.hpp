@@ -15,6 +15,12 @@ public:
     void send(std::vector<Globals::AppData>& message);
     std::optional<Globals::Packet> receive();
 private:
+
+    //functions called once; defined to cleanup update loop
+    void resendPackets();
+    void updateSentPackets(Globals::Packet received);
+    void sendInput();
+
     Socket socket;
     std::string ip;
 

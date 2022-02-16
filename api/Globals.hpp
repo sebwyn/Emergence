@@ -15,6 +15,7 @@ public:
     static std::string protocol(){
         return std::string("MERG");
     }
+    static constexpr int fps = 60;
 
     static void writeUintToBuf(std::string& buffer, uint n){
         uint offset = buffer.length();
