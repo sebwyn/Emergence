@@ -7,6 +7,8 @@
 
 class Globals {
 public:
+    static const int maxMsgLength = 1024;
+
     static const int port = 1337;
     //time before packet resend is called when packet hasn't been acked in ms
     static const int packetLostTime = 1000;
@@ -16,6 +18,20 @@ public:
         return std::string("MERG");
     }
     static constexpr int fps = 60;
+
+    //time before connection times out in seconds
+    static constexpr int timeout = 10;
+    
+    //for congestion avoidance
+    static constexpr float rttSmooth = 0.1f;
+    static constexpr int goodSendRate = 30;
+    static constexpr int badSendRate = 10;
+    static constexpr int badRtt = 250;
+
+    enum ConnectionState {
+        GOOD,
+        BAD,
+    };
 
     static void writeUintToBuf(std::string& buffer, uint n){
         uint offset = buffer.length();
@@ -129,16 +145,12 @@ public:
         }
     };
 
-    struct AppDataHandled {
-        int seq;
-        AppData data;
-
+    struct PacketHandled {
+        Packet packet;
         std::chrono::high_resolution_clock::time_point sent;
-        std::function<void(AppData)> onResend;
+        std::function<void(PacketHandled)> onResend;
 
-        bool resent = false;
-
-        AppDataHandled(int seq, AppData data, std::function<void(AppData)> onResend) : seq(seq), data(data), onResend(onResend) {
+        PacketHandled(Packet packet, std::function<void(PacketHandled)> onResend) : packet(packet), onResend(onResend) {
             sent = std::chrono::high_resolution_clock::now();
         }
     };

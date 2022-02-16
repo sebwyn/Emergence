@@ -5,6 +5,7 @@
 #include <chrono>
 #include <vector>
 #include <deque>
+#include <map>
 
 class Client {
 public:
@@ -12,26 +13,38 @@ public:
 
     void update();
     void sendKeepAlive();
-    void send(std::vector<Globals::AppData>& message);
+    void send(std::vector<Globals::AppData>& message, std::function<void(Globals::PacketHandled)> onResend = [](Globals::PacketHandled){});
     std::optional<Globals::Packet> receive();
 private:
 
+    //determine if sequence number is acked given a header
+    bool acked(Globals::Header header, uint seq);
+
     //functions called once; defined to cleanup update loop
-    void resendPackets();
-    void updateSentPackets(Globals::Packet received);
+    void manageMode();
+    void handlePacket(Globals::Packet received);
     void sendInput();
+
+    std::string message = "";
 
     Socket socket;
     std::string ip;
+    bool connectionEstablished = false;
 
     std::chrono::time_point<std::chrono::high_resolution_clock> lastPacketTime, lastSentTime;
-    bool connectionEstablished = false;
     uint remoteSeqNum = 0;
     uint localSeqNum = 0;
-
-    uint currentMessage = 0;
-
     std::bitset<32> receivedPackets;
 
-    std::deque<Globals::AppDataHandled> sentAppData;
+    uint currentMessage = 0;
+    std::map<uint, Globals::PacketHandled> sentPackets;
+
+    bool rttDefined = false;
+    double rtt;
+
+    uint returnToGood = 15000;
+    int trustedLevel = 0;
+    Globals::ConnectionState mode = Globals::ConnectionState::GOOD;
+    std::chrono::high_resolution_clock::time_point modeStart, lastTrustTime;
+
 };

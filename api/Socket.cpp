@@ -155,8 +155,8 @@ void Socket::send(std::string message){
 }
 
 std::string Socket::receive(){
-    char buffer[MAX_MESG_LENGTH] = {0};
-    recv(sockfd, buffer, MAX_MESG_LENGTH, 0);
+    char buffer[Globals::maxMsgLength] = {0};
+    recv(sockfd, buffer, Globals::maxMsgLength, 0);
     return std::string(buffer);
 }
 
@@ -165,9 +165,9 @@ std::optional<std::pair<std::string, unsigned int>> Socket::receiveFrom(std::uni
     sockaddr_in from;
     socklen_t fromLen = sizeof(from);
 
-    *data = std::unique_ptr<char>(new char[MAX_MESG_LENGTH]);
-    memset(data->get(), 0, MAX_MESG_LENGTH);
-    int bytes = recvfrom(sockfd, data->get(), MAX_MESG_LENGTH, 0, (sockaddr*)&from, &fromLen);
+    *data = std::unique_ptr<char>(new char[Globals::maxMsgLength]);
+    memset(data->get(), 0, Globals::maxMsgLength);
+    int bytes = recvfrom(sockfd, data->get(), Globals::maxMsgLength, 0, (sockaddr*)&from, &fromLen);
 
     if(bytes <= 0){
         return {};

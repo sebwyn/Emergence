@@ -20,34 +20,31 @@ Client::Client() : socket(AF_INET, SOCK_DGRAM) {
 
 void Client::update(){
     std::string message;
+    lastTrustTime = modeStart = std::chrono::high_resolution_clock::now();
     while(message != "quit"){
         //check to see if the connection has timed out
         auto updateStart = std::chrono::high_resolution_clock::now();
         
         if(connectionEstablished){
-            if(std::chrono::duration_cast<std::chrono::seconds>(updateStart - lastPacketTime).count() > 10){
+            if(std::chrono::duration_cast<std::chrono::seconds>(updateStart - lastPacketTime).count() > Globals::timeout){
                 std::cout << "The connection timed out!" << std::endl;
                 break;
             }
 
-            if(std::chrono::duration_cast<std::chrono::seconds>(updateStart - lastSentTime).count() > 1){
+            if(std::chrono::duration_cast<std::chrono::milliseconds>(updateStart - lastSentTime).count() > (1000 / Globals::goodSendRate)){
                 //send a keep alive
                 sendKeepAlive();
                 lastSentTime = std::chrono::high_resolution_clock::now();
             }
 
-            resendPackets();
+            manageMode();
         }
 
         //receive messages first (so we know what has been acknowledged)
         auto received = receive();
         if(received.has_value()){
-            if(!connectionEstablished)
-                connectionEstablished = true;
-        
+            if(!connectionEstablished) connectionEstablished = true;
             lastPacketTime = std::chrono::high_resolution_clock::now();
-            
-            updateSentPackets(*received);
             
             //not a keep alive
             if(received->messageCount){
@@ -73,13 +70,15 @@ void Client::sendKeepAlive(){
     Globals::Header header(localSeqNum++, remoteSeqNum, receivedPackets);
     Globals::Packet packet(header);
 
+    sentPackets.insert(std::pair<uint, Globals::PacketHandled>(header.seq, Globals::PacketHandled(packet, [](Globals::PacketHandled ph){})));
     socket.sendTo(ip, Globals::port, packet.toBuffer());
 }
 
-void Client::send(std::vector<Globals::AppData>& messages){
+void Client::send(std::vector<Globals::AppData>& messages, std::function<void(Globals::PacketHandled)> onResend){
     Globals::Header header(localSeqNum++, remoteSeqNum, receivedPackets);
     Globals::Packet packet(header, messages);
 
+    sentPackets.insert(std::pair<uint, Globals::PacketHandled>(header.seq, Globals::PacketHandled(packet, onResend)));
     socket.sendTo(ip, Globals::port, packet.toBuffer());
 }
 
@@ -93,86 +92,72 @@ std::optional<Globals::Packet> Client::receive(){
         if(std::string(packet.header.protocol) != Globals::protocol())
             return {};
 
+
+        handlePacket(packet);
+
         return packet;
     }
     return {};
 }
 
-void Client::resendPackets(){
-    //iterate over all the sent packets, checking if any have been lost and resending
-    auto i = sentAppData.begin();
-    for(Globals::AppDataHandled packet : sentAppData){
-        //if the packet is still in this list after a second, resend it  
-        auto now = std::chrono::high_resolution_clock::now();
-        if(std::chrono::duration_cast<std::chrono::milliseconds>(now - packet.sent).count() > Globals::packetLostTime){
-            std::cout << "Resending packet: " << packet.data.toString() << " after: " << std::chrono::duration_cast<std::chrono::milliseconds>(now - packet.sent).count() << std::endl;
-            packet.onResend(packet.data);
-            packet.resent = true;
-            //remove from the list
-            if(std::next(i) == sentAppData.cend()){
-                sentAppData.erase(i);
-                break;
-            }
-            sentAppData.erase(i);
-        }  
-        ++i; 
+bool Client::acked(Globals::Header header, uint seq){
+    if(header.ack == seq){
+        return true;
+    } else {
+        if(seq < header.ack && header.ack - seq <= 32){
+            return header.acks.test(header.ack - seq - 1);
+        }
     }
+    return false;
 }
 
-void Client::updateSentPackets(Globals::Packet received){
+void Client::handlePacket(Globals::Packet received){
     //rotate our received bitset by the difference between remoteSeqNum and receivedSeqNum
     //then set the bitset so the previous remoteSeqNum is acked
 
     //keep in mind packets may arrive out of order so sequence number may be less than our remote
     //sequence number
     if(received.header.seq > remoteSeqNum){
-        receivedPackets << received.header.seq - remoteSeqNum;
+        receivedPackets = receivedPackets << received.header.seq - remoteSeqNum;
         //ack the previous remote seq num
         receivedPackets.set(received.header.seq - remoteSeqNum - 1);
         remoteSeqNum = received.header.seq;
-    } else if(received.header.seq < remoteSeqNum && (remoteSeqNum - received.header.seq) < 32) {
+    } else if(received.header.seq < remoteSeqNum && (remoteSeqNum - received.header.seq) <= 32) {
         receivedPackets.set(remoteSeqNum - received.header.seq - 1);
     }
 
-    //update sentPackets, acking anything that has been acked
-    auto i = sentAppData.cbegin();
-    while(i != sentAppData.cend()){
-        if(received.header.ack == i->seq){
-            //remove from the list, problematic if the last element
-            if(std::next(i) == sentAppData.cend()){
-                sentAppData.erase(i);
-                break;
-            }
-            sentAppData.erase(i);
-        }
-
-        if(i->seq < received.header.ack){
-            if(i->seq - received.header.ack <= 32){
-                if(received.header.acks.test(i->seq - received.header.ack - 1)){
-                    if(std::next(i) == sentAppData.cend()){
-                        sentAppData.erase(i);
-                        break;
-                    }
-                    sentAppData.erase(i);
-                } else {
-                    std::cout << "Damn that wasn't received!" << std::endl;
-                }
+    auto now = std::chrono::high_resolution_clock::now();
+    //iterate over 
+    for(auto it = sentPackets.cbegin(); it != sentPackets.cend(); ){
+        Globals::PacketHandled packetHandled = it->second;
+        //regardless of whether or not its been acked calculate time since sending message
+        auto elapsed = std::chrono::duration_cast<std::chrono::milliseconds>(now - packetHandled.sent).count();
+        if(acked(received.header, it->first)){
+            if(!rttDefined){
+                rtt = elapsed;
+                rttDefined = true;
             } else {
-                if(!i->resent){
-                    auto now = std::chrono::high_resolution_clock::now();
-                    std::cout << "Seriously not acked after 32 packets? and " << std::chrono::duration_cast<std::chrono::milliseconds>(now - i->sent).count() << " ms and " << i->seq << " " << remoteSeqNum << std::endl;
-                    //drop the packet out of the queue
-                    if(std::next(i) == sentAppData.cend()){
-                        sentAppData.erase(i);
-                        break;
-                    }
-                    sentAppData.erase(i);
-                } else {
-                    std::cout << "Something is whacky, not resent and over 32 acks" << std::endl;
-                }
+                rtt += Globals::rttSmooth * (elapsed - rtt);
             }
+            //if its been acked remove from list
+            sentPackets.erase(it++);
+            continue;
+        } else {
+            //if its been over resend time, resend the packet
+            if(elapsed > Globals::packetLostTime){
+                //The packet was lost
+                if(packetHandled.packet.messageCount > 0){
+                    std::cout << "Resending message: " << packetHandled.packet.messages[0].toString() << std::endl;
+                }
+                packetHandled.onResend(packetHandled);
+
+                //remove from list
+                sentPackets.erase(it++);
+                continue;
+            }
+
         }
-        ++i;
+        ++it;
     }
 }
 
@@ -195,17 +180,45 @@ void Client::sendInput(){
             std::vector<Globals::AppData> data;
             Globals::AppData m = Globals::AppData(currentMessage++, message);
             data.push_back(m);
-
-            if(connectionEstablished){
-                sentAppData.push_back(Globals::AppDataHandled(localSeqNum, m, 
-                    [](Globals::AppData data){ 
-                        //std::cout << "dropped message" << std::endl;
-                    }
-                ));
-            }
-
             send(data);
             lastSentTime = std::chrono::high_resolution_clock::now();
         }
+    }
+}
+
+void Client::manageMode(){
+    auto now = std::chrono::high_resolution_clock::now();
+    //time elapsed in mode
+    auto elapsed = std::chrono::duration_cast<std::chrono::milliseconds>(now - modeStart).count();
+
+    //check rtt, and if it is bad, switch to a bad sendrate
+    if(mode == Globals::ConnectionState::GOOD && rtt > Globals::badRtt){
+        //immediately drop to bad mode
+        mode = Globals::ConnectionState::BAD;
+        modeStart = std::chrono::high_resolution_clock::now();
+
+        std::cout << "Entering bad mode!" << std::endl;
+
+        if(elapsed < 10000){
+            returnToGood *= 2;
+            if(returnToGood > 60000) returnToGood = 60000;
+        }
+    }
+
+    if(mode == Globals::ConnectionState::BAD && elapsed > returnToGood){
+
+        std::cout << "Entering good mode!" << std::endl;
+
+        //return to good after returnToGood time has passed
+        mode = Globals::ConnectionState::GOOD;
+        lastTrustTime = modeStart = std::chrono::high_resolution_clock::now();
+    }
+
+    auto timeSinceTrust = std::chrono::duration_cast<std::chrono::milliseconds>(now - lastTrustTime).count();
+    if(mode == Globals::ConnectionState::GOOD && timeSinceTrust > 10000){
+        //trust the connection
+        returnToGood /= 2;
+        lastTrustTime = std::chrono::high_resolution_clock::now();
+        if(returnToGood < 1000) returnToGood = 1000;
     }
 }

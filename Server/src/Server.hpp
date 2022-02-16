@@ -3,6 +3,7 @@
 #include "Socket.hpp"
 
 #include <deque>
+#include <map>
 
 class Server {
 public:
@@ -19,20 +20,19 @@ public:
 
 private:
 
+    //determine if sequence number is acked given a header
+    bool acked(Globals::Header header, uint seq);
+
     //functions called once; defined to cleanup update loop
-    void resendPackets();
-    void updateSentPackets(Globals::Packet received);
+    void handlePacket(Globals::Packet received);
     void sendInput();
 
     //receive a message filtering with our protocol
     std::optional<Globals::Packet> receive();
     void sendKeepAlive(std::string ip, ushort port);
-    void send(std::string ip, int port, std::vector<Globals::AppData>& message);
+    void send(std::string ip, int port, std::vector<Globals::AppData>& message, std::function<void(Globals::PacketHandled)> onResend = [](Globals::PacketHandled){});
 
-    /*
-    std::vector<Globals::AppData> toSend;
-    std::vector<Globals::AppData> received;
-    */
+    std::string message = "";
 
     Socket socket;
 
@@ -47,6 +47,9 @@ private:
 
     std::bitset<32> receivedPackets;
 
-    std::deque<Globals::AppDataHandled> sentAppData;
+    std::map<uint, Globals::PacketHandled> sentPackets;
     uint currentMessage = 0;
+
+    bool rttDefined;
+    double rtt = 0.0;
 };

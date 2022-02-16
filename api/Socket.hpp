@@ -15,8 +15,6 @@
 #include <optional>
 #include <utility>
 
-#define MAX_MESG_LENGTH 1000
-
 //this class assumes it is the only way sockets are created in an application
 //might change this
 class Socket {
