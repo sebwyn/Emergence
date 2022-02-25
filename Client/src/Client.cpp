@@ -43,7 +43,6 @@ Client::Client() : socket(AF_INET) {
 }
 
 void Client::update(){
-    std::string message;
     lastTrustTime = modeStart = std::chrono::high_resolution_clock::now();
     while(message != "quit"){
         //check to see if the connection has timed out
