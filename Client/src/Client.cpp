@@ -4,8 +4,27 @@
 
 #include <iostream>
 #include <fcntl.h>
-#include <sys/select.h>
-#include <unistd.h>
+
+#ifdef PLATFORM_WINDOWS
+    #include <windows.h>
+
+    void usleep(__int64 usec) { 
+        HANDLE timer; 
+        LARGE_INTEGER ft; 
+
+        ft.QuadPart = -(10*usec); // Convert to 100 nanosecond interval, negative value indicates relative time
+
+        timer = CreateWaitableTimer(NULL, TRUE, NULL); 
+        SetWaitableTimer(timer, &ft, 0, NULL, NULL, 0); 
+        WaitForSingleObject(timer, INFINITE); 
+        CloseHandle(timer); 
+    }
+
+    #define STDIN_FILENO _fileno(stdin)
+#else
+    #include <sys/select.h>
+    #include <unistd.h>
+#endif
 
 Client::Client() : socket(AF_INET, SOCK_DGRAM) {
     socket.bind(Globals::port+1);
@@ -13,6 +32,11 @@ Client::Client() : socket(AF_INET, SOCK_DGRAM) {
 
     std::cout << "What ip would you like to connect to: ";
     std::cin >> ip;
+
+    //flush the input on windows so it doesn't wait for the next input
+    #ifdef PLATFORM_WINDOWS
+        FlushConsoleInputBuffer(GetStdHandle(STD_INPUT_HANDLE));
+    #endif
 
     //set receivedPackets to high
     receivedPackets.set();
@@ -162,17 +186,40 @@ void Client::handlePacket(Globals::Packet received){
 }
 
 void Client::sendInput(){
-    std::string message;
+    bool hasInput = false;
+    #ifdef PLATFORM_WINDOWS
+        //one issue with this windows implementation is that if the user starts typing 
+        //the server will stop sending messages until the user finishes typing
+        //this will lead to a timeout if the user takes more than 10 seconds to type
+        HANDLE stdIn = GetStdHandle(STD_INPUT_HANDLE);
+        unsigned long numEvents, numRead;
+        GetNumberOfConsoleInputEvents(stdIn, &numEvents);
 
-    //then send messages from queue
-    fd_set fds;
-    FD_SET(STDIN_FILENO, &fds);
+        std::unique_ptr<INPUT_RECORD> records(new INPUT_RECORD[numEvents]);
+        PeekConsoleInput(stdIn, records.get(), numEvents, &numRead);
 
-    struct timeval tv;
-    tv.tv_usec = 0;
-    tv.tv_sec = 0;
-    int result = select(STDIN_FILENO+1, &fds, nullptr, nullptr, &tv);
-    if(result && result != -1 && FD_ISSET(STDIN_FILENO, &fds)){
+        if(numRead != numEvents)
+            std::cout << "What the actual fuck" << std::endl;
+
+
+        for(int i = 0; i < numEvents; i++){
+            if(records.get()[i].EventType == KEY_EVENT){
+                hasInput = true;
+                break;
+            }    
+        }
+    #else
+        fd_set fds = {};
+        FD_SET(STDIN_FILENO, &fds);
+
+        struct timeval tv;
+        tv.tv_usec = 0;
+        tv.tv_sec = 0;
+        int result = select(STDIN_FILENO+1, &fds, nullptr, nullptr, &tv);
+        if(result && result != -1 && FD_ISSET(STDIN_FILENO, &fds)) hasInput = true;
+    #endif
+
+    if(hasInput){
         //there is something to read
         std::getline(std::cin, message);
         std::cin.clear();
@@ -183,6 +230,10 @@ void Client::sendInput(){
             send(data);
             lastSentTime = std::chrono::high_resolution_clock::now();
         }
+
+        #ifdef PLATFORM_WINDOWS
+            FlushConsoleInputBuffer(stdIn);
+        #endif
     }
 }
 

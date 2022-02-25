@@ -4,6 +4,7 @@
 
 #if PLATFORM == PLATFORM_WINDOWS
     #include <winsock2.h>
+    #include <WS2tcpip.h>
 #elif PLATFORM == PLATFORM_MAC || PLATFORM_UNIX
     #include <sys/socket.h>
     #include <netinet/in.h>

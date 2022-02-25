@@ -5,11 +5,13 @@
 //include socket lib on windows
 #if PLATFORM == PLATFORM_WINDOWS
     #pragma comment( lib, "wsock32.lib" )
+    #pragma comment( lib, "ws2_32.lib")
 #endif
 
 #if PLATFORM == PLATFORM_WINDOWS
 
     #include <winsock2.h>
+    #include <WS2tcpip.h>
 
 #elif PLATFORM == PLATFORM_MAC || PLATFORM == PLATFORM_UNIX
 
@@ -92,7 +94,7 @@ bool Socket::setNonBlocking(){
     #elif PLATFORM == PLATFORM_WINDOWS
 
         DWORD nonBlocking = 1;
-        if ( ioctlsocket( handle, 
+        if ( ioctlsocket( sockfd, 
                           FIONBIO, 
                           &nonBlocking ) != 0 )
         {

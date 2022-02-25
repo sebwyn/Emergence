@@ -4,6 +4,11 @@
 #include <sstream>
 #include <vector>
 #include <iostream>
+#include <chrono>
+#include <functional>
+
+typedef unsigned int uint;
+typedef unsigned short ushort;
 
 class Globals {
 public:
