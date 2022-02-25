@@ -26,7 +26,7 @@
     #include <unistd.h>
 #endif
 
-Client::Client() : socket(AF_INET, SOCK_DGRAM) {
+Client::Client() : socket(AF_INET) {
     socket.bind(Globals::port+1);
     socket.setNonBlocking();
 

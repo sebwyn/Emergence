@@ -28,7 +28,7 @@
 #endif
 #include <random>
 
-Server::Server() : socket(AF_INET, SOCK_DGRAM) {
+Server::Server() : socket(AF_INET) {
     socket.bind(Globals::port);
     socket.setNonBlocking();
 
@@ -102,8 +102,6 @@ void Server::sendKeepAlive(std::string ip, ushort port){
 void Server::send(std::string ip, int port, std::vector<Globals::AppData>& messages, std::function<void(Globals::PacketHandled)> onResend){
     Globals::Header header(localSeqNum++, remoteSeqNum, receivedPackets);
     Globals::Packet packet(header, messages);
-
-    std::cout << "sending message: " << packet.toString() << std::endl;
 
     sentPackets.insert(std::pair<uint, Globals::PacketHandled>(header.seq, Globals::PacketHandled(packet, onResend)));
     socket.sendTo(ip, port, packet.toBuffer());

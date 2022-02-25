@@ -35,7 +35,7 @@ private:
 
     std::string message = "";
 
-    Socket socket;
+    UdpSocket socket;
 
     //ip of the single client
     std::string ip;

@@ -119,7 +119,7 @@ void Socket::bind(unsigned short port){
     }
 }
 
-bool Socket::listen(){
+bool TcpServer::listen(){
     if(::listen(sockfd, 3) < 0){ 
         std::cout << "Listen failed: " << errno << std::endl;
         return false;
@@ -127,16 +127,16 @@ bool Socket::listen(){
     return true;
 }
 
-std::optional<Socket> Socket::accept(){
+std::optional<TcpServer> TcpServer::accept(){
     int comsock;
     if((comsock = ::accept(sockfd, (struct sockaddr*)&addr, &addrlen)) < 0){
         std::cout << "Could not accept connection: " << errno << std::endl;
         return {};
     }
-    return Socket(comsock);
+    return TcpServer(comsock);
 }
 
-bool Socket::connect(const std::string ip, int port){
+bool TcpClient::connect(const std::string ip, int port){
     addr.sin_family = domain;
     addr.sin_port = htons(port);
 
@@ -152,17 +152,17 @@ bool Socket::connect(const std::string ip, int port){
     return true;
 }
 
-void Socket::send(std::string message){
+void TcpConnection::send(std::string message){
     ::send(sockfd, message.c_str(), message.length(), 0);
 }
 
-std::string Socket::receive(){
+std::string TcpConnection::receive(){
     char buffer[Globals::maxMsgLength] = {0};
     recv(sockfd, buffer, Globals::maxMsgLength, 0);
     return std::string(buffer);
 }
 
-std::optional<std::pair<std::string, unsigned int>> Socket::receiveFrom(std::unique_ptr<char>* data){
+std::optional<std::pair<std::string, unsigned int>> UdpSocket::receiveFrom(std::unique_ptr<char>* data){
 
     sockaddr_in from;
     socklen_t fromLen = sizeof(from);
@@ -187,7 +187,7 @@ std::optional<std::pair<std::string, unsigned int>> Socket::receiveFrom(std::uni
     return std::pair<std::string, unsigned int>(std::string(ipBuffer), from_port);
 }
 
-bool Socket::sendTo(std::string ip, int port, std::string message){
+bool UdpSocket::sendTo(std::string ip, int port, std::string message){
     
     sockaddr_in to;
 

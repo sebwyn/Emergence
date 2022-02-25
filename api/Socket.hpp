@@ -16,6 +16,12 @@
 #include <optional>
 #include <utility>
 
+//used so we can have multiple overloads
+//kinda jank
+struct socketfd {
+    int sockfd;
+};
+
 //this class assumes it is the only way sockets are created in an application
 //might change this
 class Socket {
@@ -31,22 +37,11 @@ public:
     bool setNonBlocking();
 
     void bind(unsigned short port);
-    bool listen();
-    std::optional<Socket> accept();
-
-    bool connect(std::string ip, int port);
-
-    void send(std::string message);
-    std::string receive();
-    void receive(void* data, int length);
-
-    bool sendTo(std::string ip, int port, std::string message);
-    std::optional<std::pair<std::string, unsigned int>> receiveFrom(std::unique_ptr<char>* data);
 
     inline int getSocket(){
         return sockfd;
     }
-private:
+protected:
     int domain, type;
 
     int sockfd;
@@ -56,4 +51,40 @@ private:
     static bool initialized;
     //count instances so we can automatically call clearnup
     static int instances;
+};
+
+class TcpConnection : public Socket {
+public:
+    TcpConnection(int family) : Socket(family, SOCK_STREAM) {}
+    TcpConnection(socketfd fd) : Socket(fd.sockfd) {}
+
+    void send(std::string message);
+    std::string receive();
+    void receive(void* data, int length);
+};
+
+class TcpServer : public TcpConnection {
+public:
+    TcpServer(int family, ushort port) : TcpConnection(family) {
+        bind(port);
+    }
+    TcpServer(int sockfd) : TcpConnection({sockfd}) {}
+
+    bool listen();
+    std::optional<TcpServer> accept();
+};
+
+class TcpClient : public TcpConnection {
+public:
+    TcpClient(int family);
+
+    bool connect(std::string ip, int port);
+};
+
+class UdpSocket : public Socket {
+public:
+    UdpSocket(int family) : Socket(family, SOCK_DGRAM) {}
+
+    bool sendTo(std::string ip, int port, std::string message);
+    std::optional<std::pair<std::string, unsigned int>> receiveFrom(std::unique_ptr<char>* data);
 };

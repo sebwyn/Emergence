@@ -27,7 +27,7 @@ private:
 
     std::string message = "";
 
-    Socket socket;
+    UdpSocket socket;
     std::string ip;
     bool connectionEstablished = false;
 
