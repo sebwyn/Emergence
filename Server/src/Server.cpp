@@ -240,7 +240,6 @@ void Server::sendInput(){
     #endif
 
     if(hasInput){
-        std::cout << "yup has input" << std::endl;
         //there is something to read
         std::getline(std::cin, message);
         std::cin.clear();
