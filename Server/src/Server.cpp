@@ -4,7 +4,7 @@
 
 #include <iostream>
 
-#ifdef PLATFORM_WINDOWS
+#if PLATFORM == PLATFORM_WINDOWS
     #include <windows.h>
 
     void usleep(__int64 usec) { 
@@ -33,7 +33,7 @@ Server::Server() : socket(AF_INET) {
     socket.setNonBlocking();
 
     //flush the input on windows so it doesn't wait for the next input
-    #ifdef PLATFORM_WINDOWS
+    #if PLATFORM == PLATFORM_WINDOWS
         FlushConsoleInputBuffer(GetStdHandle(STD_INPUT_HANDLE));
     #endif
 
@@ -207,7 +207,7 @@ void Server::handlePacket(Globals::Packet received){
 
 void Server::sendInput(){
     bool hasInput = false;
-    #ifdef PLATFORM_WINDOWS
+    #if PLATFORM == PLATFORM_WINDOWS
         //one issue with this windows implementation is that if the user starts typing 
         //the server will stop sending messages until the user finishes typing
         //this will lead to a timeout if the user takes more than 10 seconds to type
@@ -250,7 +250,7 @@ void Server::sendInput(){
             lastSentTime = std::chrono::high_resolution_clock::now();
         }
 
-        #ifdef PLATFORM_WINDOWS
+        #if PLATFORM == PLATFORM_WINDOWS
             FlushConsoleInputBuffer(stdIn);
         #endif
     }

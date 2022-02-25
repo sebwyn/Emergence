@@ -6,6 +6,8 @@
 #include <iostream>
 #include <chrono>
 #include <functional>
+#include <memory>
+#include <cstring>
 
 typedef unsigned int uint;
 typedef unsigned short ushort;
@@ -41,12 +43,12 @@ public:
     static void writeUintToBuf(std::string& buffer, uint n){
         uint offset = buffer.length();
         buffer += std::string(sizeof(uint), ' ');
-        memcpy(buffer.data() + offset, &n, sizeof(uint));
+        std::memcpy(buffer.data() + offset, &n, sizeof(uint));
     }
 
     static uint readUintFromBuf(char* address){
         uint out;
-        memcpy(&out, address, sizeof(uint));
+        std::memcpy(&out, address, sizeof(uint));
         return out;
     }
 
@@ -71,7 +73,7 @@ public:
         }
         std::string toBuffer(){
             std::string buffer = std::string(sizeof(uint), ' ');
-            memcpy(buffer.data(), &id, sizeof(uint));
+            std::memcpy(buffer.data(), &id, sizeof(uint));
             buffer += message;
             return buffer;
         }
@@ -87,7 +89,7 @@ public:
         Header(uint seq, uint ack, std::bitset<32> acks) : seq(seq), ack(ack), acks(acks) {
         }
         Header(char* address){
-            memcpy(this, address, sizeof(Header));
+            std::memcpy(this, address, sizeof(Header));
         }
 
         std::string toString(){
@@ -96,7 +98,7 @@ public:
 
         std::string toBuffer(){
             std::string buffer = std::string(sizeof(Header), ' ');
-            memcpy(buffer.data(), this, sizeof(Header));
+            std::memcpy(buffer.data(), this, sizeof(Header));
             return buffer;
         }
 
