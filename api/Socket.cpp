@@ -162,7 +162,7 @@ std::string TcpConnection::receive(){
     return std::string(buffer);
 }
 
-std::optional<std::pair<std::string, unsigned int>> UdpSocket::receiveFrom(std::unique_ptr<char>* data){
+std::optional<std::pair<std::string, unsigned short>> UdpSocket::receiveFrom(std::unique_ptr<char>* data){
 
     sockaddr_in from;
     socklen_t fromLen = sizeof(from);
@@ -176,7 +176,7 @@ std::optional<std::pair<std::string, unsigned int>> UdpSocket::receiveFrom(std::
     }
 
     unsigned int from_address = from.sin_addr.s_addr;
-    unsigned int from_port = ntohs(from.sin_port);
+    unsigned short from_port = ntohs(from.sin_port);
 
     char ipBuffer[INET_ADDRSTRLEN] = {0};
     if(inet_ntop(domain, &from_address, ipBuffer, INET_ADDRSTRLEN) == nullptr){

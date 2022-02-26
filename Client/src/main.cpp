@@ -1,11 +1,11 @@
-#include "Client.hpp"
+#include "Game.hpp"
 
 #include <iostream>
 
 int main(){
-
-    Client client;
-    client.update();
+    
+    Game game;
+    game.mainloop();
 
     return 0;
 }

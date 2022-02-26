@@ -86,5 +86,5 @@ public:
     UdpSocket(int family) : Socket(family, SOCK_DGRAM) {}
 
     bool sendTo(std::string ip, int port, std::string message);
-    std::optional<std::pair<std::string, unsigned int>> receiveFrom(std::unique_ptr<char>* data);
+    std::optional<std::pair<std::string, unsigned short>> receiveFrom(std::unique_ptr<char>* data);
 };
