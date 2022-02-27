@@ -29,51 +29,47 @@ void usleep(__int64 usec) {
 #include <unistd.h>
 #endif
 
-Client::Client() : socket(AF_INET) {
+Client::Client() : socket(AF_INET), connection(socket) {
 
     // open on an available port
     socket.bind(0);
     socket.setNonBlocking();
 }
 
-void Client::connect(std::string ip){
-    connection = std::unique_ptr<Connection>(new Connection(socket, ip, Globals::port));
-    connected = true;
+void Client::connect(const std::string &ip){
+    std::string temp("");
+    connection.connect(ip, Globals::port, temp);
+}
+
+void Client::connect(const std::string &ip, const std::string &message){
+    connection.connect(ip, Globals::port, message);
 }
 
 void Client::update() {
-    // check to see if the connection has timed out
-    if(!connected){
+    //if there isn't an active connection return
+    if (connection.getStation() == disconnected) {
         return;
     }
-    if(!connection->update()){
-        connected = false;
-        connection = nullptr;
-    }
+
+    connection.update();
+
     // receive messages first (so we know what has been acknowledged)
     auto received = receive();
     if (received.has_value()) {
-        if (received->from.ip == connection->getIp() &&
-            received->from.port == connection->getPort()){
-            connection->receive(received->packet);
+        if (received->from.ip == connection.getIp() &&
+            received->from.port == connection.getPort()) {
+            connection.receive(received->packet);
         } else {
-            std::cout << "Receiving messages not from server, very strange indeed!" << std::endl;
+            Logger::logError("Receiving messages not from server, very strange indeed!");
         }
     }
 
-    sendInput();
-}
-
-void Client::sendKeepAlive() { connection->sendKeepAlive(); }
-
-void Client::send(std::vector<Protocol::AppData> &messages,
-                  std::function<void(Protocol::PacketHandled)> onResend) {
-    connection->send(messages, onResend);
+    //sendInput();
 }
 
 std::optional<MessageFrom> Client::receive() {
-    std::unique_ptr<char> received;
-    auto from = socket.receiveFrom(&received);
+    std::string received;
+    auto from = socket.receiveFrom(received);
     if (from.has_value()) {
         // the message actually has content
         Protocol::Packet packet(received);
@@ -83,7 +79,7 @@ std::optional<MessageFrom> Client::receive() {
             return {};
 
         // add a chance to drop packets for testing purposes
-        return (MessageFrom){(ConnectID){from->first, from->second}, packet};
+        return (MessageFrom){(ConnectID){from->ip, from->port}, packet};
     }
 
     return {};
@@ -104,7 +100,7 @@ void Client::sendInput() {
     PeekConsoleInput(stdIn, records.get(), numEvents, &numRead);
 
     if (numRead != numEvents)
-        std::cout << "What the actual fuck" << std::endl;
+        Logger::logError("What the actual fuck");
 
     for (int i = 0; i < numEvents; i++) {
         if (records.get()[i].EventType == KEY_EVENT) {
@@ -129,10 +125,7 @@ void Client::sendInput() {
         std::getline(std::cin, message);
         std::cin.clear();
         if (message.length()) {
-            std::vector<Protocol::AppData> data;
-            Protocol::AppData m = Protocol::AppData(currentMessage++, message);
-            data.push_back(m);
-            send(data);
+            connection.sendMessage(message);
         }
 
 #if PLATFORM == PLATFORM_WINDOWS

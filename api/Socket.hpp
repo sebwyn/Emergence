@@ -11,6 +11,7 @@
 #endif
 
 #include "Globals.hpp"
+#include "Logger.hpp"
 
 #include <string>
 #include <optional>
@@ -42,6 +43,13 @@ public:
         return sockfd;
     }
 protected:
+
+    struct ReceivedInfo {
+        std::string ip;
+        ushort port;
+        int length;
+    };
+
     int domain, type;
 
     int sockfd;
@@ -86,5 +94,5 @@ public:
     UdpSocket(int family) : Socket(family, SOCK_DGRAM) {}
 
     bool sendTo(std::string ip, int port, std::string message);
-    std::optional<std::pair<std::string, unsigned short>> receiveFrom(std::unique_ptr<char>* data);
+    std::optional<ReceivedInfo> receiveFrom(std::string &message);
 };

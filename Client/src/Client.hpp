@@ -1,38 +1,39 @@
 #pragma once
 
-#include "Socket.hpp"
-#include "Protocol.hpp"
 #include "Connection.hpp"
+#include "Protocol.hpp"
+#include "Socket.hpp"
 
 #include <chrono>
-#include <vector>
 #include <deque>
 #include <map>
+#include <vector>
 
+// in essence a client adds almost nothing on top
+// of a connection, but I still have it here, just for the sake of it
+// the class is still kind of the couternpart of the server
+// which is necessary because it maintains many connections
 class Client {
-public:
+  public:
     Client();
 
-    void connect(std::string ip);
+    void connect(const std::string &ip);
+    void connect(const std::string &ip, const std::string &message);
 
     void update();
-
-    void sendKeepAlive();
-    void send(std::vector<Protocol::AppData>& message, std::function<void(Protocol::PacketHandled)> onResend = [](Protocol::PacketHandled){});
     std::optional<MessageFrom> receive();
 
-    bool getConnected(){ return connected; }
-private:
+    void sendLatestMessage(const std::string &message) {
+        connection.sendLatestMessage(message);
+    }
 
-    //functions called once; defined to cleanup update loop
+    Station getStation() { return connection.getStation(); }
+
+  private:
+    // functions called once; defined to cleanup update loop
     void sendInput();
-
     std::string message = "";
 
     UdpSocket socket;
-    std::unique_ptr<Connection> connection;
-
-    uint currentMessage = 0;
-
-    bool connected = false;
+    Connection connection;
 };

@@ -51,7 +51,8 @@ void Server::update() {
     while (true) {
         for (auto it = connections.begin(); it != connections.end();) {
             // update all of our connections
-            if (!it->second.update()) {
+            it->second.update();
+            if (it->second.getStation() == disconnected) {
                 // the connection timed out
                 it = connections.erase(it);
                 continue;
@@ -69,12 +70,13 @@ void Server::update() {
             if (connection != connections.end()) {
                 connection->second.receive(received->packet);
             } else {
-                std::cout << "creating a new connection" << std::endl;
+                Logger::logInfo("creating a new connection");
                 //create a new connection
                 connections.insert(std::pair<std::string, Connection>(
-                    addr, Connection(socket, received->from.ip,
-                                     received->from.port)));
-                connections.find(addr)->second.receive(received->packet);
+                    addr, Connection(socket)));
+                auto& newConnection = connections.find(addr)->second;
+                newConnection.connect(received->from.ip, received->from.port);
+                newConnection.receive(received->packet);
             }
         }
 
@@ -82,9 +84,21 @@ void Server::update() {
     }
 }
 
+void Server::sendMessage(const std::string& buffer){
+    for(auto it = connections.begin(); it != connections.end(); it++){
+        it->second.sendMessage(buffer);
+    }
+}
+
+void Server::sendLatestMessage(const std::string& buffer){
+    for(auto it = connections.begin(); it != connections.end(); it++){
+        it->second.sendLatestMessage(buffer);
+    }
+}
+
 std::optional<MessageFrom> Server::receive() {
-    std::unique_ptr<char> received;
-    auto from = socket.receiveFrom(&received);
+    std::string received;
+    auto from = socket.receiveFrom(received);
     if (from.has_value()) {
         // the message actually has content
         Protocol::Packet packet(received);
@@ -98,11 +112,11 @@ std::optional<MessageFrom> Server::receive() {
         std::default_random_engine e1(r());
         std::uniform_real_distribution<double> distribution(0.);
         if (distribution(e1) < Globals::packetLoss) {
-            // std::cout << "Dropping packet: " << receivedPackets << std::endl;
+            // Logger::logInfo("Dropping packet: " + std::to_string(receivedPackets));
             return {};
         }*/
 
-        return (MessageFrom){(ConnectID){from->first, from->second}, packet};
+        return (MessageFrom){(ConnectID){from->ip, from->port}, packet};
     }
 
     return {};

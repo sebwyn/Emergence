@@ -12,6 +12,11 @@ public:
     Server();
 
     void update();
+    
+    //push a message and then once every update time send the latest message from the server to 
+    //all clients
+    void sendMessage(const std::string& buffer);
+    void sendLatestMessage(const std::string& buffer);
 private:
     std::optional<MessageFrom> receive();
 
@@ -19,8 +24,8 @@ private:
     void handlePacket(Protocol::Packet received);
     void sendInput();
     void manageMode();
-
-    std::string message = "";
+    
+    std::vector<std::string> messsages;
 
     UdpSocket socket;
     std::map<std::string, Connection> connections;
