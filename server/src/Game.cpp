@@ -1,5 +1,7 @@
 #include "Game.hpp"
 
+#include "Messenger.hpp"
+
 void Game::mainloop() {
     while (running) {
 
@@ -29,11 +31,6 @@ void Game::mainloop() {
             server.flushMessages(connection);
         }
 
-        // also need to read in all the meCossages from the clients
-        // and update the world state based on that
-        // the issue is that some packets may get dropped, so the server
-        // needs to act as the authority, or we need to try and send packets
-        // reliably
         world = World(width, height);
         for (auto player : players) {
             // add all the players to the world

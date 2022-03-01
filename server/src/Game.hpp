@@ -1,7 +1,8 @@
 #pragma once
 
-#include "GameStructures.hpp"
 #include "Server.hpp"
+#include "Player.hpp"
+#include "World.hpp"
 
 class Game {
   public:

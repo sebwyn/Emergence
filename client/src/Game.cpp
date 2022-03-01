@@ -1,89 +1,48 @@
 #include "Game.hpp"
 
-Game::Game() : world(20, 20) { startCurses(); }
+#include <ncurses.h>
 
-Game::~Game() { killCurses(); }
+#include "Messenger.hpp"
 
 void Game::mainloop() {
 
     while (running) {
-        // get input and send it to the server
+
         if (client.getStation() == connected) {
-            int ch = getch();
-            switch (ch) {
-            case ERR:
-                break;
-            case 'q':
-                running = false;
-                break;
-            case 'w':
-                player.y--;
-                if (player.y < 0)
-                    player.y = 0;
-                break;
-            case 'a':
-                player.x--;
-                if (player.x < 0)
-                    player.x = 0;
-                break;
-            case 's':
-                player.y++;
-                if (player.y >= world.height)
-                    player.y = world.height - 1;
-                break;
-            case 'd':
-                player.x++;
-                if (player.x >= world.width)
-                    player.x = world.width - 1;
-                break;
-            }
-            std::string positionString = std::to_string(player.x) + ", " +
-                                         std::to_string(player.y) + " ";
-            mvaddstr(world.height, 0, positionString.c_str());
+
+            handleInput();
 
             // push the player position as a message to the server
             client.sendLatestMessage(Messenger::writeMessage(player));
 
-            // draw the world
-            //get the most up to date world 
+            // get the most up to date world and draw
             std::vector<Protocol::AppData> messages = client.getMessages();
-            /*
-            for(auto message : messages){
-                Logger::logInfo("Received:" + message.toString());
-            }
-            */
-            if(messages.size() > 0){
+            if (messages.size() > 0) {
                 std::optional<World> latestWorld = {};
                 Messenger::getLatest(messages, latestWorld);
-                if(latestWorld.has_value()){
+                if (latestWorld.has_value()) {
                     Logger::logInfo("Got updated world data");
-                    world = *latestWorld; 
+                    world = *latestWorld;
                 }
             }
             client.flushMessages();
-            world.draw();
-            // draw the player
+
+            if (world.data) {
+                world.draw();
+            }
             refresh();
 
             client.update();
         } else {
             // display reconnect screen
-
             erase();
             defaultCurses();
-            if(!connectionSequence(0)){
-                running = false; 
+            if (!connectionSequence(0)) {
+                running = false;
             }
             erase();
             customCurses();
         }
-        // manage
-        /*if(client->getConnected()){
-            client->update();
-        } else {
-            //kill ncurses and prompt for reconnection
-
-        }*/
     }
 }
 
@@ -107,17 +66,16 @@ void Game::defaultCurses() {
 
 void Game::killCurses() { endwin(); }
 
-bool Game::connectionSequence(uint l) {
-    uint line = l;
-    addstr("Ip you would like to connect to:");
+bool Game::connectionSequence(uint line) {
+    mvaddstr(line, 0, "Ip you would like to connect to: ");
     char buf[100];
     getstr(buf);
     line++;
-    
+
     mvaddstr(line, 0, "Connecting.  ");
     std::string ip(buf);
 
-    if(ip == "quit"){
+    if (ip == "quit") {
         return false;
     }
 
@@ -138,7 +96,7 @@ bool Game::connectionSequence(uint l) {
                 mvaddstr(line, 0, "Connecting.. ");
             else if (numPings % 3 == 2)
                 mvaddstr(line, 0, "Connecting...");
-            
+
             refresh();
         }
 
@@ -146,8 +104,42 @@ bool Game::connectionSequence(uint l) {
     }
     line++;
     if (client.getStation() == disconnected) {
+        addstr("Failed to connect!");
         return connectionSequence(line);
     }
 
     return true;
+}
+
+// TODO: collision checking on the server and send back position data to the
+// client
+void Game::handleInput() {
+    int ch = getch();
+    switch (ch) {
+    case ERR:
+        break;
+    case 'q':
+        running = false;
+        break;
+    case 'w':
+        player.y--;
+        if (player.y < 0)
+            player.y = 0;
+        break;
+    case 'a':
+        player.x--;
+        if (player.x < 0)
+            player.x = 0;
+        break;
+    case 's':
+        player.y++;
+        if (player.y >= world.height)
+            player.y = world.height - 1;
+        break;
+    case 'd':
+        player.x++;
+        if (player.x >= world.width)
+            player.x = world.width - 1;
+        break;
+    }
 }
