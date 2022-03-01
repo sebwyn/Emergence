@@ -20,14 +20,13 @@ void Game::mainloop() {
                 }
             }
             if (latestData.has_value()) {
-                Logger::logInfo("Got Player Position: " +
-                                latestData->toString());
                 if(players.find(connection.toString()) != players.end()){
                     players[connection.toString()].data = *latestData;
                 } else {
                     Logger::logInfo("We never received the player info");
                 }
             }
+            Logger::logInfo(std::to_string(messages.size()));
             server.flushMessages(connection);
         }
 
