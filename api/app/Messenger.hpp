@@ -1,15 +1,10 @@
 #pragma once
 
-#include <iostream>
-#include <map>
-#include <memory>
-#include <ncurses.h>
-#include <optional>
-#include <string>
-
 #include "Utils.hpp"
-
 #include "Protocol.hpp"
+
+#include <ncurses.h>
+
 
 typedef unsigned int uint;
 

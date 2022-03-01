@@ -1,7 +1,5 @@
 #include "Game.hpp"
 
-#include <iostream>
-
 int main(){
 
     Logger::create("clientLog.txt", "Emergence/");

@@ -4,11 +4,6 @@
 #include "Protocol.hpp"
 #include "Socket.hpp"
 
-#include <chrono>
-#include <deque>
-#include <map>
-#include <vector>
-
 // in essence a client adds almost nothing on top
 // of a connection, but I still have it here, just for the sake of it
 // the class is still kind of the couternpart of the server

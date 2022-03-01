@@ -12,7 +12,16 @@ void Logger::create(const std::string &_logFile,
     relativeDir = _relativeDir;
 }
 
-void Logger::logInfo(const std::string &message,
+void Logger::logInfo(const std::string &message) {
+
+    std::ofstream log;
+    log.open(logFile, std::ios::app);
+    // filename
+    log << " [I]: " << message << std::endl;
+    log.close();
+}
+
+/*void Logger::logInfo(const std::string &message,
                      const std::source_location location) {
 
     std::ofstream log;
@@ -24,7 +33,7 @@ void Logger::logInfo(const std::string &message,
     log << filename << ":" << location.line() << " [I]: " << message
         << std::endl;
     log.close();
-}
+}*/
 
 void Logger::logError(const std::string &message) {
     std::ofstream log;

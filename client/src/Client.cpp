@@ -5,7 +5,6 @@
 #include "Protocol.hpp"
 
 #include <fcntl.h>
-#include <iostream>
 
 #if PLATFORM == PLATFORM_WINDOWS
 #include <windows.h>

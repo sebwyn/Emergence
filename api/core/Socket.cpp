@@ -23,10 +23,6 @@
 
 #endif
 
-#include <cerrno>
-#include <iostream>
-#include <vector>
-
 bool Socket::initialized = false;
 int Socket::instances = 0;
 

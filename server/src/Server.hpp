@@ -4,9 +4,6 @@
 #include "Protocol.hpp"
 #include "Socket.hpp"
 
-#include <deque>
-#include <map>
-
 class Server {
   public:
     Server();

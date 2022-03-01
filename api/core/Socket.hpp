@@ -13,10 +13,6 @@
 #include "Globals.hpp"
 #include "Logger.hpp"
 
-#include <string>
-#include <optional>
-#include <utility>
-
 //used so we can have multiple overloads
 //kinda jank
 struct socketfd {
@@ -76,7 +72,7 @@ public:
     TcpServer(int family, ushort port) : TcpConnection(family) {
         bind(port);
     }
-    TcpServer(int sockfd) : TcpConnection({sockfd}) {}
+    TcpServer(int sockfd) : TcpConnection((socketfd){sockfd}) {}
 
     bool listen();
     std::optional<TcpServer> accept();

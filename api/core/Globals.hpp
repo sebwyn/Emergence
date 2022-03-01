@@ -1,14 +1,5 @@
 #pragma once
 
-#include <bitset>
-#include <sstream>
-#include <vector>
-#include <iostream>
-#include <chrono>
-#include <functional>
-#include <memory>
-#include <cstring>
-
 typedef unsigned int uint;
 typedef unsigned short ushort;
 
