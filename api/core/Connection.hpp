@@ -46,11 +46,17 @@ class Connection {
                  const std::string &message);
 
     void receive(Protocol::Packet packet);
-    // shouldn't be able to push a message unless connected
-    // when we consider running these in a seperate thread mutexing is going
-    // to get interesting
-    void sendLatestMessage(const std::string &message);
-    void sendMessage(const std::string &message);
+    
+    void sendLatestMessage(const std::string &message){
+        if (station == connected) {
+            latestMessage = message;
+        }
+    }
+    void sendMessage(const std::string &message){
+        if (station == connected) {
+            messages.push_back(message);
+        }
+    }
 
     std::vector<Protocol::AppData> &getMessages(){
         return receivedMessages;

@@ -3,6 +3,7 @@
 #include <chrono>
 
 #include "Logger.hpp"
+#include "Protocol.hpp"
 
 Connection::Connection(UdpSocket &socket) : socket(socket) {}
 
@@ -13,36 +14,47 @@ void Connection::onConnect() {
 
 void Connection::update() {
     auto updateStart = std::chrono::high_resolution_clock::now();
-    switch (station) {
-    case connected: {
-        // timeout the connection after timeout length
-        if (std::chrono::duration_cast<std::chrono::seconds>(updateStart -
-                                                             lastPacketTime)
-                .count() > Globals::timeout) {
+
+    if (station == disconnected) {
+        return;
+    }
+
+    // we're either connecting or already connected
+    // handle timeout
+    auto deltaReceivedTime = std::chrono::duration_cast<std::chrono::seconds>(
+                                 updateStart - lastPacketTime)
+                                 .count();
+    if (deltaReceivedTime > Globals::timeout) {
+        if (station == connecting) {
             Logger::logInfo("The connection with " + ip + ":" +
                             std::to_string(port) + " timed out!");
-            station = disconnected;
+        } else if (station == connected) {
+            Logger::logInfo("Failed to connect to " + ip + ":" +
+                            std::to_string(port));
+            // TODO: send some kind of app event
         }
+        station = disconnected;
+    }
 
-        // send a message to the client every second that keeps the
-        // connection alive, and acks
-        if (std::chrono::duration_cast<std::chrono::milliseconds>(updateStart -
-                                                                  lastSentTime)
-                .count() > (1000 / Globals::goodSendRate)) {
-            // send the last message in the queue
-            // this method works well for the type of broadcasting the
-            // server is doing not so much for the reliability we want the
-            // clients to have arguably we want tcp level reliability for
-            // the clients one way we could fix this is passing a resend
-            // callback, but I just feel as though that will feel really
-            // fucked up if packets get missed of course one way to fix this
-            // is send absolute position, and then do distance checking
-            // against this for cheating
+    // send a message to the client every second that keeps the
+    // connection alive, and acks
+    auto deltaSentTime = std::chrono::duration_cast<std::chrono::milliseconds>(
+                             updateStart - lastSentTime)
+                             .count();
+    if (deltaSentTime > (1000 / Globals::goodSendRate)) {
+
+        if (station == connecting) {
+            // send the message in connectMessage
+            std::vector<Protocol::AppData> toSend;
+            toSend.push_back(Protocol::AppData(currentMessage, connectionMessage));
+            send(toSend);
+        } else if(station == connected){
             std::vector<Protocol::AppData> toSend;
             for (auto message : messages) {
                 toSend.push_back(Protocol::AppData(currentMessage++, message));
             }
             messages.clear();
+            
             // rather than doing this latest message thing
             // I should just add a hook for when messages are being sent
             // and add the messages via that
@@ -53,49 +65,16 @@ void Connection::update() {
             }
 
             if (toSend.size() > 0) {
-                /*Logger::logInfo("sending " + std::to_string(toSend.size()) +
-                                " messages");
-                for (auto message : toSend) {
-                    Logger::logInfo(message.toString());
-                }*/
                 send(toSend);
             } else {
                 sendKeepAlive();
             }
         }
-        break;
-    }
-    case disconnected: {
-        break;
-    }
-    case connecting: {
-        // send a message every second, and wait for a response
-        if (std::chrono::duration_cast<std::chrono::seconds>(updateStart -
-                                                             lastPacketTime)
-                .count() > Globals::timeout) {
-            Logger::logInfo("Failed to connect to " + ip + ":" +
-                            std::to_string(port));
-            station = disconnected;
-        }
-
-        // send a message to the client every second that keeps the
-        // connection alive, and acks
-        if (std::chrono::duration_cast<std::chrono::milliseconds>(updateStart -
-                                                                  lastSentTime)
-                .count() > (1000 / Globals::goodSendRate)) {
-            // send the message in connectMessage
-            std::vector<Protocol::AppData> toSend;
-            toSend.push_back(
-                Protocol::AppData(currentMessage, connectionMessage));
-            send(toSend);
-        }
-        break;
-    }
     }
 
-    // TODO: update the mode
-    // updateMode();
+    //TODO: update the mode
 }
+
 
 void Connection::connect(const std::string &_ip, ushort _port) {
     if (station == disconnected) {
@@ -117,18 +96,6 @@ void Connection::connect(const std::string &_ip, ushort _port,
         connectionMessage = message;
         lastPacketTime = std::chrono::high_resolution_clock::now();
         localSeqNum = currentMessage = 0;
-    }
-}
-
-void Connection::sendLatestMessage(const std::string &message) {
-    if (station == connected) {
-        latestMessage = message;
-    }
-}
-
-void Connection::sendMessage(const std::string &message) {
-    if (station == connected) {
-        messages.push_back(message);
     }
 }
 
@@ -211,12 +178,8 @@ void Connection::receive(Protocol::Packet packet) {
         ++it;
     }
 
-    // Logger::logInfo(std::to_string(packet.messageCount));
     for (const auto message : packet.messages) {
         receivedMessages.push_back(message);
-        /*Logger::logInfo("Got message from " + ip + ":" + std::to_string(port)
-           + " with id " + std::to_string(message.id) + ": " +
-                        message.message);*/
     }
 }
 
@@ -234,7 +197,6 @@ bool Connection::acked(Protocol::Header header, uint seq) {
 void Connection::ack(Protocol::Packet packet) {
     // rotate our received bitset by the difference between remoteSeqNum and
     // receivedSeqNum then set the bitset so the previous remoteSeqNum is acked
-
     // keep in mind packets may arrive out of order so sequence number may be
     // less than our remote sequence number
     if (packet.header.seq > remoteSeqNum) {

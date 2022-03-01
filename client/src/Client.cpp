@@ -36,15 +36,6 @@ Client::Client() : socket(AF_INET), connection(socket) {
     socket.setNonBlocking();
 }
 
-void Client::connect(const std::string &ip){
-    std::string temp("");
-    connection.connect(ip, Globals::port, temp);
-}
-
-void Client::connect(const std::string &ip, const std::string &message){
-    connection.connect(ip, Globals::port, message);
-}
-
 void Client::update() {
     //if there isn't an active connection return
     if (connection.getStation() == disconnected) {
@@ -67,6 +58,7 @@ void Client::update() {
     //sendInput();
 }
 
+//this is repeated code, think about how to clean this up
 std::optional<MessageFrom> Client::receive() {
     std::string received;
     auto from = socket.receiveFrom(received);
@@ -83,53 +75,4 @@ std::optional<MessageFrom> Client::receive() {
     }
 
     return {};
-}
-
-void Client::sendInput() {
-    bool hasInput = false;
-#if PLATFORM == PLATFORM_WINDOWS
-    // one issue with this windows implementation is that if the user starts
-    // typing the server will stop sending messages until the user finishes
-    // typing this will lead to a timeout if the user takes more than 10 seconds
-    // to type
-    HANDLE stdIn = GetStdHandle(STD_INPUT_HANDLE);
-    unsigned long numEvents, numRead;
-    GetNumberOfConsoleInputEvents(stdIn, &numEvents);
-
-    std::unique_ptr<INPUT_RECORD> records(new INPUT_RECORD[numEvents]);
-    PeekConsoleInput(stdIn, records.get(), numEvents, &numRead);
-
-    if (numRead != numEvents)
-        Logger::logError("What the actual fuck");
-
-    for (int i = 0; i < numEvents; i++) {
-        if (records.get()[i].EventType == KEY_EVENT) {
-            hasInput = true;
-            break;
-        }
-    }
-#else
-    fd_set fds = {};
-    FD_SET(STDIN_FILENO, &fds);
-
-    struct timeval tv;
-    tv.tv_usec = 0;
-    tv.tv_sec = 0;
-    int result = select(STDIN_FILENO + 1, &fds, nullptr, nullptr, &tv);
-    if (result && result != -1 && FD_ISSET(STDIN_FILENO, &fds))
-        hasInput = true;
-#endif
-
-    if (hasInput) {
-        // there is something to read
-        std::getline(std::cin, message);
-        std::cin.clear();
-        if (message.length()) {
-            connection.sendMessage(message);
-        }
-
-#if PLATFORM == PLATFORM_WINDOWS
-        FlushConsoleInputBuffer(stdIn);
-#endif
-    }
 }

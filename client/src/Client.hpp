@@ -17,8 +17,14 @@ class Client {
   public:
     Client();
 
-    void connect(const std::string &ip);
-    void connect(const std::string &ip, const std::string &message);
+    void connect(const std::string &ip) {
+        std::string temp("");
+        connection.connect(ip, Globals::port, temp);
+    }
+
+    void connect(const std::string &ip, const std::string &message) {
+        connection.connect(ip, Globals::port, message);
+    }
 
     void update();
     std::optional<MessageFrom> receive();
@@ -27,13 +33,11 @@ class Client {
         connection.sendLatestMessage(message);
     }
 
-    std::vector<Protocol::AppData> getMessages(){
-        return connection.getMessages(); 
+    std::vector<Protocol::AppData> getMessages() {
+        return connection.getMessages();
     }
 
-    void flushMessages(){
-        connection.flushMessages();
-    }
+    void flushMessages() { connection.flushMessages(); }
 
     Station getStation() { return connection.getStation(); }
 
@@ -41,8 +45,6 @@ class Client {
     // functions called once; defined to cleanup update loop
     void sendInput();
     std::string message = "";
-
-
 
     UdpSocket socket;
     Connection connection;

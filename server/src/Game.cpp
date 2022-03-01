@@ -26,7 +26,6 @@ void Game::mainloop() {
                     Logger::logInfo("We never received the player info");
                 }
             }
-            Logger::logInfo(std::to_string(messages.size()));
             server.flushMessages(connection);
         }
 
