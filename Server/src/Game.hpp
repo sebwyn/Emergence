@@ -17,8 +17,8 @@ class Game {
         Player() : info('@'), data(0, 0) {}
     };
 
-    const uint width = 10;
-    const uint height = 10; 
+    const uint width = 20;
+    const uint height = 20; 
 
     World world;
     Server server;

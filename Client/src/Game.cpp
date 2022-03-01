@@ -42,13 +42,25 @@ void Game::mainloop() {
             mvaddstr(world.height, 0, positionString.c_str());
 
             // push the player position as a message to the server
-            std::string packToSend = Messenger::writeMessage(player);
-            Logger::logInfo("Packet: " + packToSend);
-            client.sendLatestMessage(packToSend);
+            client.sendLatestMessage(Messenger::writeMessage(player));
 
             // draw the world
             //get the most up to date world 
-
+            std::vector<Protocol::AppData> messages = client.getMessages();
+            /*
+            for(auto message : messages){
+                Logger::logInfo("Received:" + message.toString());
+            }
+            */
+            if(messages.size() > 0){
+                std::optional<World> latestWorld = {};
+                Messenger::getLatest(messages, latestWorld);
+                if(latestWorld.has_value()){
+                    Logger::logInfo("Got updated world data");
+                    world = *latestWorld; 
+                }
+            }
+            client.flushMessages();
             world.draw();
             // draw the player
             refresh();

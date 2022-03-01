@@ -13,10 +13,10 @@
 
 typedef unsigned int uint;
 
-//Contains a couple of functions for reading and writing 
-//arbitrary messages, as well as a get latest message
-//function that iterates over a list of messages and gets
-//the desired structs with the highest message IDs
+// Contains a couple of functions for reading and writing
+// arbitrary messages, as well as a get latest message
+// function that iterates over a list of messages and gets
+// the desired structs with the highest message IDs
 class Messenger {
   public:
     template <class T>
@@ -31,14 +31,20 @@ class Messenger {
         }
     }
 
+    //this function feels out of place in this class 
+    //in reality it feels like it belongs inside of the connection method
+    //the issue is this method bridges the gap between receiving up to date
+    //messages and finding app data, so it can really only exist here
     template <class... Types>
     static void getLatest(const std::vector<Protocol::AppData> &messages,
-                          Types &...out) {
+                          std::optional<Types> &...out) {
         std::map<uint, uint> highestIds;
         // initialize everything with zeros
         (
             [&](auto &input) {
-                uint typeId = std::remove_reference<decltype(input)>::type::id;
+                using t = typename std::remove_reference<
+                    decltype(input)>::type::value_type;
+                uint typeId = t::id;
                 if (highestIds.find(typeId) != highestIds.end()) {
                     throw "Expected unique getLatest call";
                 }
@@ -50,7 +56,7 @@ class Messenger {
                 (
                     [&](auto &input) {
                         using t = typename std::remove_reference<
-                            decltype(input)>::type;
+                            decltype(input)>::type::value_type;
                         uint typeId = t::id;
                         auto castedType = readMessage<t>(message.message);
                         if (castedType.has_value()) {

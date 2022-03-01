@@ -27,12 +27,22 @@ class Client {
         connection.sendLatestMessage(message);
     }
 
+    std::vector<Protocol::AppData> getMessages(){
+        return connection.getMessages(); 
+    }
+
+    void flushMessages(){
+        connection.flushMessages();
+    }
+
     Station getStation() { return connection.getStation(); }
 
   private:
     // functions called once; defined to cleanup update loop
     void sendInput();
     std::string message = "";
+
+
 
     UdpSocket socket;
     Connection connection;

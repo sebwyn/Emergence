@@ -6,37 +6,44 @@ void Game::mainloop() {
         std::vector<ConnectID> connections;
         server.getConnections(connections);
 
-        // Logger::logInfo("Got " + std::to_string(connections.size()) + "
-        // connections");
         for (auto connection : connections) {
             auto messages = server.getMessages(connection);
-            for (auto message : messages) {
-                Logger::logInfo(message.toString());
-            }
+            std::optional<PlayerInfo> latestInfo = {}; 
             std::optional<PlayerData> latestData = {};
-            Messenger::getLatest(messages, *latestData);
-            auto msg = Messenger::readMessage<PlayerData>(messages[0].message);
+            Messenger::getLatest(messages, latestInfo, latestData);
+            if(latestInfo.has_value()){
+                if(players.find(connection.toString()) != players.end()){
+                    Logger::logInfo("We're receiving the player info multiple times");
+                } else {
+                    players[connection.toString()] = Player();
+                    players[connection.toString()].info = *latestInfo;
+                }
+            }
             if (latestData.has_value()) {
-                std::cout
-                    << "Got Player Position: " << latestData->toString()
-                    << std::endl;
+                Logger::logInfo("Got Player Position: " +
+                                latestData->toString());
+                if(players.find(connection.toString()) != players.end()){
+                    players[connection.toString()].data = *latestData;
+                } else {
+                    Logger::logInfo("We never received the player info");
+                }
             }
             server.flushMessages(connection);
-            }
-
-            // also need to read in all the meCossages from the clients
-            // and update the world state based on that
-            // the issue is that some packets may get dropped, so the server
-            // needs to act as the authority, or we need to try and send packets
-            // reliably
-            world = World(width, height);
-            for (auto player : players) {
-                // add all the players to the world
-                world.data[player.second.data.y][player.second.data.x] =
-                    player.second.info.symbol;
-            }
-
-            server.sendLatestMessage(world.toBuffer());
-            server.update();
         }
+
+        // also need to read in all the meCossages from the clients
+        // and update the world state based on that
+        // the issue is that some packets may get dropped, so the server
+        // needs to act as the authority, or we need to try and send packets
+        // reliably
+        world = World(width, height);
+        for (auto player : players) {
+            // add all the players to the world
+            world.data[player.second.data.y][player.second.data.x] =
+                player.second.info.symbol;
+        }
+
+        server.sendLatestMessage(Messenger::writeMessage(world));
+        server.update();
     }
+}
