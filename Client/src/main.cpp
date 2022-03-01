@@ -4,7 +4,7 @@
 
 int main(){
 
-    Logger::create("clientLog.txt");
+    Logger::create("clientLog.txt", "Emergence/");
     Logger::logInfo("Starting client");
     
     Game game;

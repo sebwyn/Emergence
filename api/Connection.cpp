@@ -53,10 +53,11 @@ void Connection::update() {
             }
 
             if (toSend.size() > 0) {
-                // Logger::logInfo("sending " + std::to_string(toSend.size()) +
-                // " messages"); for(auto message : toSend){
-                // Logger::logInfo(message.toString());
-                //}
+                /*Logger::logInfo("sending " + std::to_string(toSend.size()) +
+                                " messages");
+                for (auto message : toSend) {
+                    Logger::logInfo(message.toString());
+                }*/
                 send(toSend);
             } else {
                 sendKeepAlive();
@@ -210,11 +211,12 @@ void Connection::receive(Protocol::Packet packet) {
         ++it;
     }
 
-    Logger::logInfo(std::to_string(packet.messageCount));
+    // Logger::logInfo(std::to_string(packet.messageCount));
     for (const auto message : packet.messages) {
-        Logger::logInfo("Got message from " + ip + ":" + std::to_string(port) +
-                        " with id " + std::to_string(message.id) + ": " +
-                        message.message);
+        receivedMessages.push_back(message);
+        /*Logger::logInfo("Got message from " + ip + ":" + std::to_string(port)
+           + " with id " + std::to_string(message.id) + ": " +
+                        message.message);*/
     }
 }
 

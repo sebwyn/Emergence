@@ -5,8 +5,7 @@
 #include <ncurses.h>
 
 #include "Client.hpp"
-#include "World.hpp"
-#include "Player.hpp"
+#include "GameStructures.hpp"
 
 class Game {
   public:
@@ -17,7 +16,8 @@ class Game {
 
   private:
 
-    Player player = {0, 0};
+    PlayerInfo playerInfo = PlayerInfo("@");
+    PlayerData player = {0, 0};
     World world;
 
     void startCurses();

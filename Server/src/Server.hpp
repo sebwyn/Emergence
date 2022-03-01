@@ -1,30 +1,53 @@
 #pragma once
 
-#include "Socket.hpp"
-#include "Protocol.hpp"
 #include "Connection.hpp"
+#include "Protocol.hpp"
+#include "Socket.hpp"
 
 #include <deque>
 #include <map>
 
 class Server {
-public:
+  public:
     Server();
 
     void update();
-    
-    //push a message and then once every update time send the latest message from the server to 
-    //all clients
-    void sendMessage(const std::string& buffer);
-    void sendLatestMessage(const std::string& buffer);
-private:
+
+    void getConnections(std::vector<ConnectID> &c) {
+        for (auto it = connections.begin(); it != connections.end(); it++) {
+            c.push_back(ConnectID(it->first));
+        }
+    }
+
+    // push a message and then once every update time send the latest message
+    // from the server to all clients
+    void sendMessage(const std::string &buffer) {
+        for (auto it = connections.begin(); it != connections.end(); it++) {
+            it->second.sendMessage(buffer);
+        }
+    }
+    void sendLatestMessage(const std::string &buffer) {
+        for (auto it = connections.begin(); it != connections.end(); it++) {
+            it->second.sendLatestMessage(buffer);
+        }
+    }
+
+    // TODO: call these directly from getting connections
+    std::vector<Protocol::AppData> &getMessages(ConnectID connection) {
+        return connections.at(connection.toString()).getMessages();
+    }
+    void flushMessages(ConnectID connection) {
+        connections.at(connection.toString()).flushMessages();
+    }
+
+  private:
     std::optional<MessageFrom> receive();
 
-    //functions called once; defined to cleanup update loop
+    // functions called once; defined to cleanup update loop
     void handlePacket(Protocol::Packet received);
     void sendInput();
     void manageMode();
-    
+
     std::vector<std::string> messsages;
 
     UdpSocket socket;

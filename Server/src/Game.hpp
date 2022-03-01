@@ -1,16 +1,28 @@
 #pragma once
 
+#include "GameStructures.hpp"
 #include "Server.hpp"
-#include "World.hpp"
-#include "Player.hpp"
 
 class Game {
-public:
+  public:
+    Game() : world(width, height) {}
+
     void mainloop();
-private:
+
+  private:
+    struct Player {
+        PlayerInfo info;
+        PlayerData data;
+
+        Player() : info('@'), data(0, 0) {}
+    };
+
+    const uint width = 10;
+    const uint height = 10; 
+
     World world;
     Server server;
 
-    std::vector<Player> players;
+    std::map<std::string, Player> players;
     bool running = true;
 };

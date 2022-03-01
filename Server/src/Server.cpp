@@ -45,55 +45,41 @@ Server::Server() : socket(AF_INET) {
 
 void Server::update() {
 
-    //TODO: add sleeps so we don't eat up cpu cycles
-    //honestly create a thread for each connection and sleep the necessary amount of time to send acks
-    //so if we're sending 30 times a second send all the messages that have accumulated in that time
-    while (true) {
-        for (auto it = connections.begin(); it != connections.end();) {
-            // update all of our connections
-            it->second.update();
-            if (it->second.getStation() == disconnected) {
-                // the connection timed out
-                it = connections.erase(it);
-                continue;
-            }
-            it++;
+    // TODO: add sleeps so we don't eat up cpu cycles
+    // honestly create a thread for each connection and sleep the necessary
+    // amount of time to send acks so if we're sending 30 times a second send
+    // all the messages that have accumulated in that time
+    for (auto it = connections.begin(); it != connections.end();) {
+        // update all of our connections
+        it->second.update();
+        if (it->second.getStation() == disconnected) {
+            // the connection timed out
+            it = connections.erase(it);
+            continue;
         }
+        it++;
+    }
 
-        // receive new messages either sending the message to respective
-        // connection or establishing a new connection
-        std::optional<MessageFrom> received = receive();
-        if (received.has_value()) {
-            std::string addr = received->from.toString();
-            // process the received packet
-            auto connection = connections.find(addr);
-            if (connection != connections.end()) {
-                connection->second.receive(received->packet);
-            } else {
-                Logger::logInfo("creating a new connection");
-                //create a new connection
-                connections.insert(std::pair<std::string, Connection>(
-                    addr, Connection(socket)));
-                auto& newConnection = connections.find(addr)->second;
-                newConnection.connect(received->from.ip, received->from.port);
-                newConnection.receive(received->packet);
-            }
+    // receive new messages either sending the message to respective
+    // connection or establishing a new connection
+    std::optional<MessageFrom> received = receive();
+    if (received.has_value()) {
+        std::string addr = received->from.toString();
+        // process the received packet
+        auto connection = connections.find(addr);
+        if (connection != connections.end()) {
+            connection->second.receive(received->packet);
+        } else {
+            Logger::logInfo("creating a new connection");
+            // create a new connection
+            std::pair<std::string, Connection> pair(addr, Connection(socket));
+            connections.insert(pair);
+            auto &newConnection = connections.find(addr)->second;
+            newConnection.connect(received->from.ip, received->from.port);
+            newConnection.receive(received->packet);
         }
-
-        //sendInput();
     }
-}
-
-void Server::sendMessage(const std::string& buffer){
-    for(auto it = connections.begin(); it != connections.end(); it++){
-        it->second.sendMessage(buffer);
-    }
-}
-
-void Server::sendLatestMessage(const std::string& buffer){
-    for(auto it = connections.begin(); it != connections.end(); it++){
-        it->second.sendLatestMessage(buffer);
-    }
+    // sendInput();
 }
 
 std::optional<MessageFrom> Server::receive() {
@@ -112,8 +98,8 @@ std::optional<MessageFrom> Server::receive() {
         std::default_random_engine e1(r());
         std::uniform_real_distribution<double> distribution(0.);
         if (distribution(e1) < Globals::packetLoss) {
-            // Logger::logInfo("Dropping packet: " + std::to_string(receivedPackets));
-            return {};
+            // Logger::logInfo("Dropping packet: " +
+        std::to_string(receivedPackets)); return {};
         }*/
 
         return (MessageFrom){(ConnectID){from->ip, from->port}, packet};

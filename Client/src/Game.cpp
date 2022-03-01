@@ -42,12 +42,15 @@ void Game::mainloop() {
             mvaddstr(world.height, 0, positionString.c_str());
 
             // push the player position as a message to the server
-            client.sendLatestMessage("POS:" + player.toBuffer());
+            std::string packToSend = Messenger::writeMessage(player);
+            Logger::logInfo("Packet: " + packToSend);
+            client.sendLatestMessage(packToSend);
 
             // draw the world
+            //get the most up to date world 
+
             world.draw();
             // draw the player
-            mvaddch(player.y, player.x, '@');
             refresh();
 
             client.update();
@@ -106,7 +109,7 @@ bool Game::connectionSequence(uint l) {
         return false;
     }
 
-    client.connect(ip);
+    client.connect(ip, Messenger::writeMessage(playerInfo));
     uint numPings = 0;
     auto lastPing = std::chrono::high_resolution_clock::now();
     while (client.getStation() == connecting) {

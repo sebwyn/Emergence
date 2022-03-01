@@ -14,7 +14,13 @@ typedef unsigned int uint;
 struct ConnectID {
     std::string ip;
     ushort port;
-
+    ConnectID(std::string ip, ushort port) : ip(ip), port(port) {}
+    ConnectID(const std::string &buffer){
+        uint cIndex = buffer.find(':');
+        ip = buffer.substr(0, cIndex);
+        port = std::stoi(buffer.substr(cIndex+1));
+    }
+    
     std::string toString() { return ip + ":" + std::to_string(port); }
 };
 
@@ -33,25 +39,26 @@ class Connection {
 
     // updates station to either connected or disconnected
     // this can be read after a call and acted on appropriately
-    void onConnect();
     void update();
 
     void connect(const std::string &_ip, ushort _port);
-    void connect(const std::string &_ip, ushort _port, const std::string &message);
+    void connect(const std::string &_ip, ushort _port,
+                 const std::string &message);
 
+    void receive(Protocol::Packet packet);
     // shouldn't be able to push a message unless connected
     // when we consider running these in a seperate thread mutexing is going
     // to get interesting
     void sendLatestMessage(const std::string &message);
     void sendMessage(const std::string &message);
 
-    void sendKeepAlive();
-    void send(
-        std::vector<Protocol::AppData> &messages,
-        std::function<void(Protocol::PacketHandled)> onResend =
-            [](Protocol::PacketHandled) {});
+    std::vector<Protocol::AppData> &getMessages(){
+        return receivedMessages;
+    }
 
-    void receive(Protocol::Packet packet);
+    void flushMessages(){
+        receivedMessages.clear();
+    }
 
     std::string getIp() { return ip; }
     ushort getPort() { return port; }
@@ -59,6 +66,13 @@ class Connection {
     Station getStation() { return station; }
 
   private:
+    void sendKeepAlive();
+    void send(
+        std::vector<Protocol::AppData> &messages,
+        std::function<void(Protocol::PacketHandled)> onResend =
+            [](Protocol::PacketHandled) {});
+
+    void onConnect();
     // determine if a seq number is acked in a given packet
     bool acked(Protocol::Header header, uint seq);
 
@@ -73,6 +87,8 @@ class Connection {
     std::string latestMessage;
     std::vector<std::string> messages;
     std::string connectionMessage;
+
+    std::vector<Protocol::AppData> receivedMessages;
 
     std::string ip;
     ushort port;

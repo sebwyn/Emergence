@@ -8,6 +8,9 @@
 #include <string>
 #include <vector>
 
+#include "Logger.hpp"
+#include "Utils.hpp"
+
 class Protocol {
   public:
     struct AppData {
@@ -18,21 +21,18 @@ class Protocol {
         AppData() : id(0), message(nullptr) {}
         AppData(uint id, std::string message) : id(id), message(message) {}
         AppData(const std::string &buffer, uint &offset) {
-            id = readUintFromBuf(buffer, offset);
-            uint length = readUintFromBuf(buffer, offset);
-            message = std::string(buffer.data() + offset, length);
-            offset += message.length();
+            id = Utils::readUintFromBuf(buffer, offset);
+            uint length = Utils::readUintFromBuf(buffer, offset);
+            message = Utils::readStringFromBuf(buffer, offset, length);
         }
 
         std::string toString() {
             return "(Data: " + std::to_string(id) + ", " + message + ")";
         }
         std::string toBuffer() {
-            std::string buffer = std::string(sizeof(uint), ' ');
-            std::memcpy(buffer.data(), &id, sizeof(uint));
-            buffer += std::string(sizeof(uint), ' ');
-            uint length = message.length();
-            std::memcpy(buffer.data() + sizeof(uint), &length, sizeof(uint));
+            std::string buffer;
+            Utils::writeUintToBuf(buffer, id);
+            Utils::writeUintToBuf(buffer, message.length());
             buffer += message;
             return buffer;
         }
@@ -78,7 +78,7 @@ class Protocol {
             uint offset = 0;
 
             header = Header(buffer, offset);
-            messageCount = readUintFromBuf(buffer, offset);
+            messageCount = Utils::readUintFromBuf(buffer, offset);
             for (int i = 0; i < messageCount; i++) {
                 AppData data = AppData(buffer, offset);
                 messages.push_back(data);
@@ -97,14 +97,10 @@ class Protocol {
 
         std::string toBuffer() {
             std::string buffer = header.toBuffer();
-            writeUintToBuf(buffer, messageCount);
+            Utils::writeUintToBuf(buffer, messageCount);
             for (AppData message : messages) {
-                // copy the messageLength and the message into the buffer for
-                // every message
-                std::string m = message.toBuffer();
-                buffer += m;
+                buffer += message.toBuffer();
             }
-            // std::cout << "Produced buffer: " << buffer << std::endl;
             return buffer;
         }
     };
@@ -122,16 +118,4 @@ class Protocol {
     };
 
   private:
-    static void writeUintToBuf(std::string &buffer, uint data) {
-        uint offset = buffer.length();
-        buffer += std::string(sizeof(uint), ' ');
-        std::memcpy(buffer.data() + offset, &data, sizeof(uint));
-    }
-
-    static uint readUintFromBuf(const std::string &buffer, uint &offset) {
-        uint out;
-        std::memcpy(&out, buffer.data() + offset, sizeof(uint));
-        offset += sizeof(uint);
-        return out;
-    }
 };
