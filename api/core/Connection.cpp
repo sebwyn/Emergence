@@ -26,11 +26,11 @@ void Connection::update() {
                                  .count();
     if (deltaReceivedTime > Globals::timeout) {
         if (station == connecting) {
-            Logger::logInfo("The connection with " + ip + ":" +
-                            std::to_string(port) + " timed out!");
+            Logger::logInfo("The connection with " + other.ip + ":" +
+                            std::to_string(other.port) + " timed out!");
         } else if (station == connected) {
-            Logger::logInfo("Failed to connect to " + ip + ":" +
-                            std::to_string(port));
+            Logger::logInfo("Failed to connect to " + other.ip + ":" +
+                            std::to_string(other.port));
             // TODO: send some kind of app event
         }
         station = disconnected;
@@ -46,15 +46,16 @@ void Connection::update() {
         if (station == connecting) {
             // send the message in connectMessage
             std::vector<Protocol::AppData> toSend;
-            toSend.push_back(Protocol::AppData(currentMessage, connectionMessage));
+            toSend.push_back(
+                Protocol::AppData(currentMessage, connectionMessage));
             send(toSend);
-        } else if(station == connected){
+        } else if (station == connected) {
             std::vector<Protocol::AppData> toSend;
             for (auto message : messages) {
                 toSend.push_back(Protocol::AppData(currentMessage++, message));
             }
             messages.clear();
-            
+
             // rather than doing this latest message thing
             // I should just add a hook for when messages are being sent
             // and add the messages via that
@@ -72,28 +73,15 @@ void Connection::update() {
         }
     }
 
-    //TODO: update the mode
+    // TODO: update the mode
 }
 
-
-void Connection::connect(const std::string &_ip, ushort _port) {
+void Connection::connect(ConnectId _other, const std::string &message) {
     if (station == disconnected) {
-        station = connecting;
-        ip = _ip;
-        port = _port;
-        connectionMessage = "";
-        lastPacketTime = std::chrono::high_resolution_clock::now();
-        localSeqNum = currentMessage = 0;
-    }
-}
-
-void Connection::connect(const std::string &_ip, ushort _port,
-                         const std::string &message) {
-    if (station == disconnected) {
-        station = connecting;
-        ip = _ip;
-        port = _port;
+        other = _other;
         connectionMessage = message;
+
+        station = connecting;
         lastPacketTime = std::chrono::high_resolution_clock::now();
         localSeqNum = currentMessage = 0;
     }
@@ -106,7 +94,7 @@ void Connection::sendKeepAlive() {
     sentPackets.insert(std::pair<uint, Protocol::PacketHandled>(
         header.seq,
         Protocol::PacketHandled(packet, [](Protocol::PacketHandled ph) {})));
-    socket.sendTo(ip, port, packet.toBuffer());
+    socket.sendTo(other.ip, other.port, packet.toBuffer());
 
     lastSentTime = std::chrono::high_resolution_clock::now();
 }
@@ -118,7 +106,7 @@ void Connection::send(std::vector<Protocol::AppData> &messages,
 
     sentPackets.insert(std::pair<uint, Protocol::PacketHandled>(
         header.seq, Protocol::PacketHandled(packet, onResend)));
-    socket.sendTo(ip, port, packet.toBuffer());
+    socket.sendTo(other.ip, other.port, packet.toBuffer());
 
     lastSentTime = std::chrono::high_resolution_clock::now();
 }

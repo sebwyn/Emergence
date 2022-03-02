@@ -5,7 +5,7 @@
 void Game::mainloop() {
     while (running) {
 
-        std::vector<ConnectID> connections;
+        std::vector<ConnectId> connections;
         server.getConnections(connections);
 
         for (auto connection : connections) {

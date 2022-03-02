@@ -75,7 +75,7 @@ void Server::update() {
             std::pair<std::string, Connection> pair(addr, Connection(socket));
             connections.insert(pair);
             auto &newConnection = connections.find(addr)->second;
-            newConnection.connect(received->from.ip, received->from.port);
+            newConnection.connect(received->from);
             newConnection.receive(received->packet);
         }
     }
@@ -92,7 +92,7 @@ std::optional<MessageFrom> Server::receive() {
         if (std::string(packet.header.protocol) != Globals::protocol())
             return {};
 
-        return (MessageFrom){(ConnectID){from->ip, from->port}, packet};
+        return (MessageFrom){(ConnectId){from->ip, from->port}, packet};
     }
 
     return {};

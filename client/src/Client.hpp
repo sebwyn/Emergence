@@ -12,13 +12,8 @@ class Client {
   public:
     Client();
 
-    void connect(const std::string &ip) {
-        std::string temp("");
-        connection.connect(ip, Globals::port, temp);
-    }
-
-    void connect(const std::string &ip, const std::string &message) {
-        connection.connect(ip, Globals::port, message);
+    void connect(const std::string &ip, const std::string &message = "") {
+        connection.connect(ConnectId(ip, Globals::port), message);
     }
 
     void update();

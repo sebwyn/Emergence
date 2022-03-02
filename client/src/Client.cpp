@@ -46,8 +46,7 @@ void Client::update() {
     // receive messages first (so we know what has been acknowledged)
     auto received = receive();
     if (received.has_value()) {
-        if (received->from.ip == connection.getIp() &&
-            received->from.port == connection.getPort()) {
+        if(received->from == connection.getOther()){
             connection.receive(received->packet);
         } else {
             Logger::logError("Receiving messages not from server, very strange indeed!");
@@ -70,7 +69,7 @@ std::optional<MessageFrom> Client::receive() {
             return {};
 
         // add a chance to drop packets for testing purposes
-        return (MessageFrom){(ConnectID){from->ip, from->port}, packet};
+        return (MessageFrom){(ConnectId){from->ip, from->port}, packet};
     }
 
     return {};

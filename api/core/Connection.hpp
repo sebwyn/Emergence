@@ -5,21 +5,30 @@
 
 typedef unsigned int uint;
 
-struct ConnectID {
+struct ConnectId {
     std::string ip;
     ushort port;
-    ConnectID(std::string ip, ushort port) : ip(ip), port(port) {}
-    ConnectID(const std::string &buffer){
+    ConnectId() : ip(""), port(0) {}
+    ConnectId(std::string ip, ushort port) : ip(ip), port(port) {}
+    ConnectId(const std::string &buffer) {
         uint cIndex = buffer.find(':');
         ip = buffer.substr(0, cIndex);
-        port = std::stoi(buffer.substr(cIndex+1));
+        port = std::stoi(buffer.substr(cIndex + 1));
     }
-    
+
+    bool operator==(const ConnectId &other) {
+        if (ip == other.ip && port == other.port) {
+            return true;
+        } else {
+            return false;
+        }
+    }
+
     std::string toString() { return ip + ":" + std::to_string(port); }
 };
 
 struct MessageFrom {
-    ConnectID from;
+    ConnectId from;
     Protocol::Packet packet;
 };
 
@@ -35,33 +44,25 @@ class Connection {
     // this can be read after a call and acted on appropriately
     void update();
 
-    void connect(const std::string &_ip, ushort _port);
-    void connect(const std::string &_ip, ushort _port,
-                 const std::string &message);
+    void connect(ConnectId other, const std::string &message = "");
 
     void receive(Protocol::Packet packet);
-    
-    void sendLatestMessage(const std::string &message){
+
+    void sendLatestMessage(const std::string &message) {
         if (station == connected) {
             latestMessage = message;
         }
     }
-    void sendMessage(const std::string &message){
+    void sendMessage(const std::string &message) {
         if (station == connected) {
             messages.push_back(message);
         }
     }
 
-    std::vector<Protocol::AppData> &getMessages(){
-        return receivedMessages;
-    }
+    std::vector<Protocol::AppData> &getMessages() { return receivedMessages; }
+    void flushMessages() { receivedMessages.clear(); }
 
-    void flushMessages(){
-        receivedMessages.clear();
-    }
-
-    std::string getIp() { return ip; }
-    ushort getPort() { return port; }
+    ConnectId getOther() { return other; }
 
     Station getStation() { return station; }
 
@@ -90,8 +91,7 @@ class Connection {
 
     std::vector<Protocol::AppData> receivedMessages;
 
-    std::string ip;
-    ushort port;
+    ConnectId other;
 
     Station station = disconnected;
     uint remoteSeqNum = 0;

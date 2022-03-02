@@ -10,9 +10,9 @@ class Server {
 
     void update();
 
-    void getConnections(std::vector<ConnectID> &c) {
+    void getConnections(std::vector<ConnectId> &c) {
         for (auto it = connections.begin(); it != connections.end(); it++) {
-            c.push_back(ConnectID(it->first));
+            c.push_back(ConnectId(it->first));
         }
     }
 
@@ -30,10 +30,10 @@ class Server {
     }
 
     // TODO: call these directly from getting connections
-    std::vector<Protocol::AppData> &getMessages(ConnectID connection) {
+    std::vector<Protocol::AppData> &getMessages(ConnectId connection) {
         return connections.at(connection.toString()).getMessages();
     }
-    void flushMessages(ConnectID connection) {
+    void flushMessages(ConnectId connection) {
         connections.at(connection.toString()).flushMessages();
     }
 
