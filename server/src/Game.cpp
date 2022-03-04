@@ -2,6 +2,8 @@
 
 #include "Messenger.hpp"
 
+using namespace std::literals::chrono_literals;
+
 void Game::mainloop() {
     while (running) {
 
@@ -10,19 +12,20 @@ void Game::mainloop() {
 
         for (auto connection : connections) {
             auto messages = server.getMessages(connection);
-            std::optional<PlayerInfo> latestInfo = {}; 
+            std::optional<PlayerInfo> latestInfo = {};
             std::optional<PlayerData> latestData = {};
             Messenger::getLatest(messages, latestInfo, latestData);
-            if(latestInfo.has_value()){
-                if(players.find(connection.toString()) != players.end()){
-                    Logger::logInfo("We're receiving the player info multiple times");
+            if (latestInfo.has_value()) {
+                if (players.find(connection.toString()) != players.end()) {
+                    Logger::logInfo(
+                        "We're receiving the player info multiple times");
                 } else {
                     players[connection.toString()] = Player();
                     players[connection.toString()].info = *latestInfo;
                 }
             }
             if (latestData.has_value()) {
-                if(players.find(connection.toString()) != players.end()){
+                if (players.find(connection.toString()) != players.end()) {
                     players[connection.toString()].data = *latestData;
                 } else {
                     Logger::logInfo("We never received the player info");
@@ -38,7 +41,11 @@ void Game::mainloop() {
                 player.second.info.symbol;
         }
 
-        server.sendLatestMessage(Messenger::writeMessage(world));
+        server.sendMessage(Messenger::writeMessage(world));
+        //Logger::logInfo(Messenger::writeMessage(world));
+
         server.update();
+
+        std::this_thread::sleep_for(30ms);
     }
 }

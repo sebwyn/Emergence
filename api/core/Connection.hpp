@@ -1,7 +1,7 @@
-#pragma once
 
 #include "Protocol.hpp"
 #include "Socket.hpp"
+#include "Task.hpp"
 
 typedef unsigned int uint;
 
@@ -34,39 +34,55 @@ struct MessageFrom {
 
 enum Station { connecting, connected, disconnected };
 
-class Connection {
+// by default this is a threaded connection
+// TODO: think about adding a non-threaded connection
+class Connection : public Task {
   public:
     // by default a connection is not established, the first time
     // receive gets called on it it becomes established
     Connection(UdpSocket &socket);
 
+    void connect(ConnectId other, const std::string &message = "");
+    void disconnect();
+
+    virtual void sendMessage(const std::string &message) {
+        if (station == connected) {
+            toSend.access([&message](std::vector<std::string> &data) {
+                data.push_back(message);
+            });
+        }
+    }
+
+    std::vector<Protocol::AppData> getMessages() {
+        std::vector<Protocol::AppData> out;
+        receivedFrom.access(
+            [&out](std::vector<Protocol::AppData> &data) { out = data; });
+        return out;
+    }
+    void flushMessages() {
+        receivedFrom.access(
+            [](std::vector<Protocol::AppData> &data) { data.clear(); });
+    }
+
+    void pushToReceive(Protocol::Packet packet) {
+        toReceive.access([&packet](std::vector<Protocol::Packet> &data) {
+            data.push_back(packet);
+        });
+    }
+
+    ConnectId getOther() { return other; }
+    Station getStation() { return station.load(); }
+
+    void setFps(uint _fps) { fps.store(_fps); }
+
+  protected:
+    void execute() override;
+
     // updates station to either connected or disconnected
     // this can be read after a call and acted on appropriately
     void update();
-
-    void connect(ConnectId other, const std::string &message = "");
-
     void receive(Protocol::Packet packet);
 
-    void sendLatestMessage(const std::string &message) {
-        if (station == connected) {
-            latestMessage = message;
-        }
-    }
-    void sendMessage(const std::string &message) {
-        if (station == connected) {
-            messages.push_back(message);
-        }
-    }
-
-    std::vector<Protocol::AppData> &getMessages() { return receivedMessages; }
-    void flushMessages() { receivedMessages.clear(); }
-
-    ConnectId getOther() { return other; }
-
-    Station getStation() { return station; }
-
-  private:
     void sendKeepAlive();
     void send(
         std::vector<Protocol::AppData> &messages,
@@ -74,26 +90,31 @@ class Connection {
             [](Protocol::PacketHandled) {});
 
     void onConnect();
+    void onDisconnect() {}
     // determine if a seq number is acked in a given packet
     bool acked(Protocol::Header header, uint seq);
-
     // set receivedPackets and localSeqNum based on an incoming packet
     void ack(Protocol::Packet packet);
-
     void updateMode();
 
-    UdpSocket &socket;
+    // interfaces for sending and receiving messages between the main thread and
+    // the connection
+    Threaded<std::vector<std::string>> toSend;
+    Threaded<std::vector<Protocol::AppData>> receivedFrom;
+    Threaded<std::vector<Protocol::Packet>> toReceive;          
+    std::atomic<uint> fps = 30;
 
-    uint currentMessage = 0;
-    std::string latestMessage;
-    std::vector<std::string> messages;
-    std::string connectionMessage;
-
-    std::vector<Protocol::AppData> receivedMessages;
-
+    std::atomic<Station> station = disconnected;
+    // while this is acquired by the main thread, it is never set on the
+    // connection thread, so no need to make atomic
     ConnectId other;
 
-    Station station = disconnected;
+    // all of these variables should only be referenced by the connection thread
+    UdpSocket &socket;
+
+    std::string connectionMessage;
+    uint currentMessage = 0;
+
     uint remoteSeqNum = 0;
     uint localSeqNum = 0;
     std::bitset<32> receivedPackets;
@@ -101,11 +122,12 @@ class Connection {
     std::chrono::time_point<std::chrono::high_resolution_clock> lastPacketTime,
         lastSentTime;
 
+    // can replaces this with a circular buffer of messages for better
+    // performance
     std::map<uint, Protocol::PacketHandled> sentPackets;
 
     bool rttDefined;
     double rtt = 0.0;
-
     uint returnToGood = 15000;
     int trustedLevel = 0;
     Globals::ConnectionState mode = Globals::ConnectionState::GOOD;

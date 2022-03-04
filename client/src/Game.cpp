@@ -4,6 +4,8 @@
 
 #include "Messenger.hpp"
 
+using namespace std::literals::chrono_literals;
+
 void Game::mainloop() {
 
     while (running) {
@@ -13,7 +15,7 @@ void Game::mainloop() {
             handleInput();
 
             // push the player position as a message to the server
-            client.sendLatestMessage(Messenger::writeMessage(player));
+            client.sendMessage(Messenger::writeMessage(player));
 
             // get the most up to date world and draw
             std::vector<Protocol::AppData> messages = client.getMessages();
@@ -28,11 +30,16 @@ void Game::mainloop() {
             client.flushMessages();
 
             if (world.data) {
+                for(int y = 0; y < world.height; y++){
+                    Logger::logInfo(world.data[y]);
+                }
                 world.draw();
             }
             refresh();
 
             client.update();
+
+            std::this_thread::sleep_for(30ms);
         } else {
             // display reconnect screen
             erase();
@@ -44,6 +51,9 @@ void Game::mainloop() {
             customCurses();
         }
     }
+
+    client.disconnect();
+    client.join();
 }
 
 void Game::startCurses() { initscr(); }
@@ -104,7 +114,7 @@ bool Game::connectionSequence(uint line) {
     }
     line++;
     if (client.getStation() == disconnected) {
-        addstr("Failed to connect!");
+        addstr(" Failed to connect!");
         return connectionSequence(line);
     }
 

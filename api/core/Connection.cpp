@@ -5,11 +5,56 @@
 #include "Logger.hpp"
 #include "Protocol.hpp"
 
-Connection::Connection(UdpSocket &socket) : socket(socket) {}
+Connection::Connection(UdpSocket &socket) : socket(socket) {
+    toSend.setValue(std::vector<std::string>(0));
+    toSend.getValue().reserve(100);
+}
 
+void Connection::connect(ConnectId _other, const std::string &message) {
+    if (station.load() == disconnected) {
+        other = _other;
+        connectionMessage = message;
+
+        station.store(connecting);
+        lastPacketTime = std::chrono::high_resolution_clock::now();
+        localSeqNum = currentMessage = 0;
+    }
+}
+
+//TODO: send disconnection message
+void Connection::disconnect(){
+    if(station.load() != disconnected){
+        station.store(disconnected);
+    }
+}
+
+// since conne
 void Connection::onConnect() {
     // important because connection objects can potentially be reused
+    // reserver space for 100 messages
+    Logger::logInfo("Established connection");
     receivedPackets.set();
+}
+
+void Connection::execute() {
+    while (station.load() != disconnected) {
+        auto updateStart = std::chrono::high_resolution_clock::now();
+
+        update();
+
+        auto updateEnd = std::chrono::high_resolution_clock::now();
+
+        // sleep for update time minus the update time
+        auto deltaUpdate =
+            std::chrono::duration_cast<std::chrono::microseconds>(updateEnd -
+                                                                  updateStart);
+        /*Logger::logInfo("Updating took: " +
+                        std::to_string(deltaUpdate.count()) + " microseconds");
+        */
+        //std::cout << "Sleeping for: " << (std::chrono::microseconds(1000000 / fps.load()) - deltaUpdate).count() << std::endl;
+        std::this_thread::sleep_for(std::chrono::microseconds(1000000 / fps.load()) -
+                                    deltaUpdate);
+    }
 }
 
 void Connection::update() {
@@ -25,10 +70,10 @@ void Connection::update() {
                                  updateStart - lastPacketTime)
                                  .count();
     if (deltaReceivedTime > Globals::timeout) {
-        if (station == connecting) {
+        if (station == connected) {
             Logger::logInfo("The connection with " + other.ip + ":" +
                             std::to_string(other.port) + " timed out!");
-        } else if (station == connected) {
+        } else if (station == connecting) {
             Logger::logInfo("Failed to connect to " + other.ip + ":" +
                             std::to_string(other.port));
             // TODO: send some kind of app event
@@ -50,41 +95,37 @@ void Connection::update() {
                 Protocol::AppData(currentMessage, connectionMessage));
             send(toSend);
         } else if (station == connected) {
-            std::vector<Protocol::AppData> toSend;
-            for (auto message : messages) {
-                toSend.push_back(Protocol::AppData(currentMessage++, message));
-            }
-            messages.clear();
+            std::vector<Protocol::AppData> sending;
 
-            // rather than doing this latest message thing
-            // I should just add a hook for when messages are being sent
-            // and add the messages via that
-            if (latestMessage.length()) {
-                toSend.push_back(
-                    Protocol::AppData(currentMessage++, latestMessage));
-                latestMessage = "";
+            toSend.access([&sending, this](std::vector<std::string> &data) {
+                for (auto message : data) {
+                    sending.push_back(
+                        Protocol::AppData(currentMessage++, message));
+                }
+                data.clear();
+            });
+
+            for(auto message : sending){
+                Logger::logInfo("Sending: " + message.toBuffer());
             }
 
-            if (toSend.size() > 0) {
-                send(toSend);
+            if (sending.size() > 0) {
+                send(sending);
             } else {
                 sendKeepAlive();
             }
         }
     }
 
+    //Logger::logInfo("Getting here");
+    toReceive.access([this](std::vector<Protocol::Packet> &data){
+        for(auto packet : data){
+            receive(packet);
+        }
+        data.clear();
+    });
+
     // TODO: update the mode
-}
-
-void Connection::connect(ConnectId _other, const std::string &message) {
-    if (station == disconnected) {
-        other = _other;
-        connectionMessage = message;
-
-        station = connecting;
-        lastPacketTime = std::chrono::high_resolution_clock::now();
-        localSeqNum = currentMessage = 0;
-    }
 }
 
 void Connection::sendKeepAlive() {
@@ -116,7 +157,7 @@ void Connection::send(std::vector<Protocol::AppData> &messages,
 void Connection::receive(Protocol::Packet packet) {
     lastPacketTime = std::chrono::high_resolution_clock::now();
 
-    switch (station) {
+    switch (station.load()) {
     case connected:
         // process the message in the rest of the function
         break;
@@ -125,7 +166,7 @@ void Connection::receive(Protocol::Packet packet) {
         return;
     case connecting:
         onConnect();
-        station = connected;
+        station.store(connected);
         break;
     }
 
@@ -166,9 +207,12 @@ void Connection::receive(Protocol::Packet packet) {
         ++it;
     }
 
-    for (const auto message : packet.messages) {
-        receivedMessages.push_back(message);
-    }
+    receivedFrom.access([&packet](std::vector<Protocol::AppData> &data) {
+        for (const auto message : packet.messages) {
+                data.push_back(Protocol::AppData(message));
+                Logger::logInfo("Received: " + message.message);
+        }
+    });
 }
 
 bool Connection::acked(Protocol::Header header, uint seq) {

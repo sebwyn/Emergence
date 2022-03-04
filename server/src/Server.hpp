@@ -20,21 +20,16 @@ class Server {
     // from the server to all clients
     void sendMessage(const std::string &buffer) {
         for (auto it = connections.begin(); it != connections.end(); it++) {
-            it->second.sendMessage(buffer);
-        }
-    }
-    void sendLatestMessage(const std::string &buffer) {
-        for (auto it = connections.begin(); it != connections.end(); it++) {
-            it->second.sendLatestMessage(buffer);
+            it->second->sendMessage(buffer);
         }
     }
 
     // TODO: call these directly from getting connections
-    std::vector<Protocol::AppData> &getMessages(ConnectId connection) {
-        return connections.at(connection.toString()).getMessages();
+    std::vector<Protocol::AppData> getMessages(ConnectId connection) {
+        return connections.at(connection.toString())->getMessages();
     }
     void flushMessages(ConnectId connection) {
-        connections.at(connection.toString()).flushMessages();
+        connections.at(connection.toString())->flushMessages();
     }
 
   private:
@@ -48,7 +43,7 @@ class Server {
     std::vector<std::string> messsages;
 
     UdpSocket socket;
-    std::map<std::string, Connection> connections;
+    std::map<std::string, Connection*> connections;
 
     uint currentMessage = 0;
 

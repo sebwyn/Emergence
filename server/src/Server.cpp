@@ -51,9 +51,9 @@ void Server::update() {
     // all the messages that have accumulated in that time
     for (auto it = connections.begin(); it != connections.end();) {
         // update all of our connections
-        it->second.update();
-        if (it->second.getStation() == disconnected) {
+        if (it->second->tryJoin()) {
             // the connection timed out
+            delete it->second;
             it = connections.erase(it);
             continue;
         }
@@ -68,15 +68,16 @@ void Server::update() {
         // process the received packet
         auto connection = connections.find(addr);
         if (connection != connections.end()) {
-            connection->second.receive(received->packet);
+            connection->second->pushToReceive(received->packet);
         } else {
             Logger::logInfo("creating a new connection");
             // create a new connection
-            std::pair<std::string, Connection> pair(addr, Connection(socket));
+            const std::pair pair(addr, new Connection(socket));
             connections.insert(pair);
             auto &newConnection = connections.find(addr)->second;
-            newConnection.connect(received->from);
-            newConnection.receive(received->packet);
+            newConnection->connect(received->from);
+            newConnection->start();
+            newConnection->pushToReceive(received->packet);
         }
     }
 }

@@ -8,5 +8,16 @@ int main() {
     Game game;
     game.mainloop();
     
+    /*
+    Server server;
+    
+    while(true){
+        server.update();
+
+        server.sendMessage("Hello there, welcome!");
+
+        std::this_thread::sleep_for(std::chrono::milliseconds(100));
+    }
+    */
     return 0;
 }

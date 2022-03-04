@@ -13,28 +13,35 @@ class Client {
     Client();
 
     void connect(const std::string &ip, const std::string &message = "") {
-        connection.connect(ConnectId(ip, Globals::port), message);
+        if(connection.getRunning() == false){
+            connection.connect(ConnectId(ip, Globals::port), message);
+            //on connect start the server
+            connection.start();
+        }
+    }
+
+    void disconnect(){
+        connection.disconnect();
+    }
+
+    void join(){
+        connection.join();
     }
 
     void update();
-    std::optional<MessageFrom> receive();
-
-    void sendLatestMessage(const std::string &message) {
-        connection.sendLatestMessage(message);
+    void sendMessage(const std::string &message){
+        connection.sendMessage(message);
     }
 
     std::vector<Protocol::AppData> getMessages() {
         return connection.getMessages();
     }
-
     void flushMessages() { connection.flushMessages(); }
 
     Station getStation() { return connection.getStation(); }
 
   private:
-    // functions called once; defined to cleanup update loop
-    void sendInput();
-    std::string message = "";
+    std::optional<MessageFrom> receive();
 
     UdpSocket socket;
     Connection connection;

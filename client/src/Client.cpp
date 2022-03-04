@@ -37,17 +37,16 @@ Client::Client() : socket(AF_INET), connection(socket) {
 
 void Client::update() {
     //if there isn't an active connection return
-    if (connection.getStation() == disconnected) {
+    if(connection.getRunning() == false){
+        connection.tryJoin();
         return;
     }
-
-    connection.update();
 
     // receive messages first (so we know what has been acknowledged)
     auto received = receive();
     if (received.has_value()) {
         if(received->from == connection.getOther()){
-            connection.receive(received->packet);
+            connection.pushToReceive(received->packet);
         } else {
             Logger::logError("Receiving messages not from server, very strange indeed!");
         }
