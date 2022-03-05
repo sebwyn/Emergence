@@ -3,6 +3,7 @@
 #include <ncurses.h>
 
 #include "Utils.hpp"
+#include "Logger.hpp"
 
 typedef unsigned int uint;
 

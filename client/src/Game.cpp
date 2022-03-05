@@ -23,16 +23,13 @@ void Game::mainloop() {
                 std::optional<World> latestWorld = {};
                 Messenger::getLatest(messages, latestWorld);
                 if (latestWorld.has_value()) {
-                    Logger::logInfo("Got updated world data");
+                    //Logger::logInfo("Got updated world data");
                     world = *latestWorld;
                 }
             }
             client.flushMessages();
 
             if (world.data) {
-                for(int y = 0; y < world.height; y++){
-                    Logger::logInfo(world.data[y]);
-                }
                 world.draw();
             }
             refresh();

@@ -105,10 +105,6 @@ void Connection::update() {
                 data.clear();
             });
 
-            for(auto message : sending){
-                Logger::logInfo("Sending: " + message.toBuffer());
-            }
-
             if (sending.size() > 0) {
                 send(sending);
             } else {
@@ -144,6 +140,8 @@ void Connection::send(std::vector<Protocol::AppData> &messages,
                       std::function<void(Protocol::PacketHandled)> onResend) {
     Protocol::Header header(localSeqNum++, remoteSeqNum, receivedPackets);
     Protocol::Packet packet(header, messages);
+
+    //Logger::logInfo("sending: " + packet.toBuffer());
 
     sentPackets.insert(std::pair<uint, Protocol::PacketHandled>(
         header.seq, Protocol::PacketHandled(packet, onResend)));
@@ -210,7 +208,7 @@ void Connection::receive(Protocol::Packet packet) {
     receivedFrom.access([&packet](std::vector<Protocol::AppData> &data) {
         for (const auto message : packet.messages) {
                 data.push_back(Protocol::AppData(message));
-                Logger::logInfo("Received: " + message.message);
+                //Logger::logInfo("Received: " + message.message);
         }
     });
 }

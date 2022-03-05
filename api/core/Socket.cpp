@@ -193,7 +193,7 @@ bool UdpSocket::sendTo(std::string ip, int port, std::string message) {
     int bytesSent = sendto(sockfd, message.c_str(), message.length(), 0,
                            (const sockaddr *)&to, sizeof(to));
     if (bytesSent != message.length()) {
-    Logger::logError("Couldn't send the whole message");
+        Logger::logError("Couldn't send the whole message");
     }
 
     return true;

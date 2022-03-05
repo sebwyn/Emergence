@@ -5,7 +5,7 @@ typedef unsigned short ushort;
 
 class Globals {
 public:
-    static const int maxMsgLength = 1024;
+    static const int maxMsgLength = 2048;
 
     static const int port = 1337;
     //time before packet resend is called when packet hasn't been acked in ms
