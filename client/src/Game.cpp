@@ -36,7 +36,7 @@ void Game::mainloop() {
 
             client.update();
 
-            std::this_thread::sleep_for(30ms);
+            std::this_thread::sleep_for(5ms);
         } else {
             // display reconnect screen
             erase();

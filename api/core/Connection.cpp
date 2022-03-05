@@ -5,6 +5,8 @@
 #include "Logger.hpp"
 #include "Protocol.hpp"
 
+using namespace std::literals::chrono_literals;
+
 Connection::Connection(UdpSocket &socket) : socket(socket) {
     toSend.setValue(std::vector<std::string>(0));
     toSend.getValue().reserve(100);
@@ -52,8 +54,7 @@ void Connection::execute() {
                         std::to_string(deltaUpdate.count()) + " microseconds");
         */
         //std::cout << "Sleeping for: " << (std::chrono::microseconds(1000000 / fps.load()) - deltaUpdate).count() << std::endl;
-        std::this_thread::sleep_for(std::chrono::microseconds(1000000 / fps.load()) -
-                                    deltaUpdate);
+        std::this_thread::sleep_for(5ms);
     }
 }
 

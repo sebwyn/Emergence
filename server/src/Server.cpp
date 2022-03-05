@@ -63,7 +63,7 @@ void Server::update() {
     // receive new messages either sending the message to respective
     // connection or establishing a new connection
     std::optional<MessageFrom> received = receive();
-    if (received.has_value()) {
+    while(received.has_value()){
         std::string addr = received->from.toString();
         // process the received packet
         auto connection = connections.find(addr);
@@ -79,6 +79,8 @@ void Server::update() {
             newConnection->start();
             newConnection->pushToReceive(received->packet);
         }
+
+        received = receive();
     }
 }
 

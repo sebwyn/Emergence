@@ -44,13 +44,15 @@ void Client::update() {
 
     // receive messages first (so we know what has been acknowledged)
     auto received = receive();
-    if (received.has_value()) {
+    while(received.has_value()) {
         if(received->from == connection.getOther()){
             //Logger::logInfo(received->packet.toBuffer());
             connection.pushToReceive(received->packet);
         } else {
             Logger::logError("Receiving messages not from server, very strange indeed!");
         }
+
+        received = receive();
     }
 
     //sendInput();

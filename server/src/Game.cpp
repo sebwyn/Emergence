@@ -46,6 +46,6 @@ void Game::mainloop() {
 
         server.update();
 
-        std::this_thread::sleep_for(30ms);
+        std::this_thread::sleep_for(10ms);
     }
 }
