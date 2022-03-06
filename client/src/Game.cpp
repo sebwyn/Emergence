@@ -8,6 +8,13 @@ using namespace std::literals::chrono_literals;
 
 void Game::mainloop() {
 
+    while(running){
+        if(!renderer->update()){
+            running = false;
+        }
+    }
+
+    /*
     while (running) {
 
         if (client.getStation() == connected) {
@@ -51,6 +58,7 @@ void Game::mainloop() {
 
     client.disconnect();
     client.join();
+    */
 }
 
 void Game::startCurses() { initscr(); }

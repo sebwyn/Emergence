@@ -5,16 +5,18 @@
 #include "Client.hpp"
 #include "Player.hpp"
 #include "World.hpp"
+#include "rendering/Renderer.hpp"
+#include "rendering/30_multisampling.hpp"
 
 class Game {
   public:
-    Game(){ startCurses(); }
-    ~Game(){ killCurses(); }
+    Game() { renderer = new Renderer(); 
+    }
+    ~Game() { delete renderer; }
 
     void mainloop();
 
   private:
-
     void startCurses();
     void defaultCurses();
     void customCurses();
@@ -22,6 +24,8 @@ class Game {
 
     bool connectionSequence(uint line);
     void handleInput();
+
+    Renderer *renderer;
 
     PlayerInfo playerInfo = PlayerInfo("@");
     PlayerData player = {0, 0};

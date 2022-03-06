@@ -16,3 +16,7 @@
 #include <thread>
 #include <mutex>
 #include <atomic>
+#include <set>
+
+#define GLFW_INCLUDE_VULKAN
+#include <GLFW/glfw3.h>
